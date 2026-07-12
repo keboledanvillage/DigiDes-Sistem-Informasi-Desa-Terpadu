@@ -1,0 +1,1869 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DigiDes - Sistem Informasi Desa Terpadu</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        theme: 'var(--theme-color)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* Force Arial font across the entire application as requested */
+        * {
+            font-family: Arial, Helvetica, sans-serif !important;
+        }
+
+        :root {
+            --theme-color: #2563eb; /* Default blue */
+        }
+        .style-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+        .style-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .style-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.5); border-radius: 20px; }
+        .dark .style-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(75, 85, 99, 0.5); }
+        
+        @media print {
+            body * { visibility: hidden; }
+            #printable-area, #printable-area * { visibility: visible; }
+            #printable-area { 
+                position: absolute; 
+                left: 0; 
+                top: 0; 
+                width: 100%; 
+                padding: 0; 
+                color: #000 !important;
+                background-color: #fff !important;
+            }
+            .print-hide { display: none !important; }
+            @page { size: A4; margin: 15mm; }
+        }
+
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        
+        /* Custom Background Overlay for Login */
+        .login-overlay {
+            background-color: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(5px);
+        }
+    </style>
+
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for in-browser JSX compilation -->
+    <script src="https://script.google.com/macros/s/AKfycbz_fb-ecXO_fa6kzvZk6J9hKZfJ4mMAmP6TFzBRO5OXY9lVKeO1lGSFkZf-iI-Z6pHh/exec>
+</head>
+<body class="bg-gray-50 text-gray-900 transition-colors duration-300 dark:bg-gray-900 dark:text-gray-100">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const USERS = [
+            { username: 'kades', password: 'sairun123', name: 'SAIRUN', role: 'KADES' },
+            { username: 'sekdes', password: 'masharudin123', name: 'MASHARUDIN', role: 'SEKDES' },
+            { username: 'kasi_kesejahteraan', password: 'soidin123', name: 'SOIDIN', role: 'KASI KESEJAHTERAAN' },
+            { username: 'kasi_pelayanan', password: 'salafudin123', name: 'SALAFUDIN', role: 'KASI PELAYANAN (Lebe)' },
+            { username: 'kaur_pemerintahan', password: 'aminah123', name: 'AMINAH', role: 'KASI PEMERINTAHAN' },
+            { username: 'kaur_perencanaan', password: 'masrukhi123', name: 'MASRUKHI', role: 'KAUR PERENCANAAN' },
+            { username: 'kaur_tu', password: 'lukman123', name: 'LUKMAN', role: 'KAUR TU & UMUM' },
+            { username: 'kaur_keuangan', password: 'nuryanto123', name: 'NURYANTO', role: 'KAUR KEUANGAN' },
+            { username: 'kadus_1', password: 'danton123', name: 'DANTON', role: 'KADUS I' },
+            { username: 'lebe_2', password: 'lutfi123', name: 'LUTFI', role: 'KADUS II (Lebe)' }
+        ];
+
+        const JENIS_SURAT = [
+            "Surat Keterangan Domisili", 
+            "Surat Keterangan SKCK", 
+            "Surat Keterangan Tidak Mampu",
+            "Surat Keterangan Jalan", 
+            "Surat Keterangan Usaha", 
+            "Surat Keterangan Usaha Pertanian", // Added new agricultural certificate
+            "Surat Keterangan Belum Menikah", 
+            "Surat Keterangan Ijin Keramaian", 
+            "Surat Keterangan Kelahiran", 
+            "Surat Keterangan Kematian", 
+            "Surat Pengantar Ijin Pemasangan Listrik", 
+            "Surat Keterangan Ijin Bangunan",
+            "Surat Keterangan Umum", 
+            "Surat Kuasa", // Enhanced power of attorney
+            "Surat Kuasa Umum", 
+            "Surat Perjanjian Jual Beli", 
+            "Surat Keterangan Hutang Piutang",
+            "Surat Ijin Suami/Istri", 
+            "Surat Keterangan ( Custom )"
+        ];
+
+        const DUMMY_PENDUDUK = [
+            { id: 1, nik: "3329082607770006", nama: "ABDUL KHOLIK", jk: "Laki-laki", ttl: "BREBES, 26/07/1977", alamat: "RT 003 RW 002, Desa Keboledan", agama: "Islam", pekerjaan: "Wiraswasta" },
+            { id: 2, nik: "3329082705060004", nama: "MUAMAR", jk: "Laki-laki", ttl: "BREBES, 27/05/2006", alamat: "RT 004 RW 002, Desa Keboledan", agama: "Islam", pekerjaan: "Pelajar/Mahasiswa" },
+            { id: 3, nik: "3329080406860009", nama: "SIROJUDIN", jk: "Laki-laki", ttl: "BREBES, 04/06/1986", alamat: "RT 001 RW 001, Desa Keboledan", agama: "Islam", pekerjaan: "Petani/Wiraswasta" },
+            { id: 4, nik: "3329085206920012", nama: "NUR FITRIA", jk: "Perempuan", ttl: "BREBES, 12/06/1992", alamat: "RT 001 RW 001, Desa Keboledan", agama: "Islam", pekerjaan: "Mengurus Rumah Tangga" },
+            { id: 5, nik: "3329084107370064", nama: "TARKIMAH", jk: "Perempuan", ttl: "BREBES, 01/07/1937", alamat: "RT 002 RW 001, Desa Keboledan", agama: "Islam", pekerjaan: "Mengurus Rumah Tangga" }
+        ];
+
+        function Icon({ name, size = 16, className = "" }) {
+            const iconMap = {
+                User: "fas fa-user", Lock: "fas fa-lock", LayoutDashboard: "fas fa-chart-pie",
+                FileText: "fas fa-file-alt", Users: "fas fa-users", FolderOpen: "fas fa-folder-open",
+                LogOut: "fas fa-sign-out-alt", Moon: "fas fa-moon", Sun: "fas fa-sun",
+                Printer: "fas fa-print", Search: "fas fa-search", Plus: "fas fa-plus",
+                Save: "fas fa-save", X: "fas fa-times", Palette: "fas fa-palette",
+                Trash2: "fas fa-trash-alt", Landmark: "fas fa-landmark", Building: "fas fa-building",
+                MapIcon: "fas fa-map", Map: "fas fa-map-marked-alt", Upload: "fas fa-upload",
+                Eye: "fas fa-eye", ImageIcon: "fas fa-image", FileIcon: "fas fa-file",
+                Edit3: "fas fa-edit", PlusCircle: "fas fa-plus-circle", Briefcase: "fas fa-briefcase",
+                Clipboard: "fas fa-clipboard", Heart: "fas fa-heart", FileSignature: "fas fa-file-signature",
+                TrendingUp: "fas fa-chart-line", Archive: "fas fa-archive", Wallet: "fas fa-wallet",
+                Download: "fas fa-download", Calendar: "fas fa-calendar", FileWord: "fas fa-file-word",
+                FileExcel: "fas fa-file-excel", FilePdf: "fas fa-file-pdf", Edit: "fas fa-pen"
+            };
+            return <i className={`${iconMap[name] || "fas fa-circle"} ${className}`} style={{ fontSize: size }}></i>;
+        }
+
+        function App() {
+            const [currentUser, setCurrentUser] = useState(null);
+            const [themeMode, setThemeMode] = useState('light');
+            const [themeColor, setThemeColor] = useState('#2563eb'); 
+            
+            const [loginData, setLoginData] = useState({ username: '', password: '' });
+            const [loginError, setLoginError] = useState('');
+
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [penduduk, setPenduduk] = useState(DUMMY_PENDUDUK);
+            
+            const [dokumen, setDokumen] = useState([]);
+            const [documentToEdit, setDocumentToEdit] = useState(null);
+            const [notification, setNotification] = useState('');
+            
+            const [uploadedFiles, setUploadedFiles] = useState([]);
+
+            // Workspace Custom Documents State (for Kades, Sekdes, etc. to create editable documents)
+            const [workspaceDocs, setWorkspaceDocs] = useState([
+                { id: 1, role: 'KADES', title: 'Keputusan Kepala Desa No. 12 Tahun 2026', content: 'Menimbang bahwa dalam rangka meningkatkan pelayanan administrasi kependudukan di Desa Keboledan, dirasa perlu menerapkan sistem digitalisasi data secara terpadu.\n\nMemutuskan:\n1. Menetapkan sistem DigiDes sebagai gerbang pelayanan utama.\n2. Menginstruksikan seluruh jajaran perangkat untuk mengoperasikan perangkat kerja masing-masing.', date: '12 Juli 2026' },
+                { id: 2, role: 'SEKDES', title: 'Laporan Evaluasi Pelayanan Semester I', content: 'Pelayanan administrasi surat-menyurat di Desa Keboledan telah mengalami peningkatan efisiensi sebesar 45% setelah uji coba aplikasi mandiri.\n\nRencana Tindak Lanjut:\n- Sosialisasi penggunaan form cetak terstruktur bagi warga luar daerah.\n- Pembelian inventaris printer baru untuk memperlancar pelayanan fisik.', date: '12 Juli 2026' }
+            ]);
+
+            useEffect(() => {
+                if (themeMode === 'dark') {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+                document.documentElement.style.setProperty('--theme-color', themeColor);
+            }, [themeMode, themeColor]);
+
+            const showToast = (message) => {
+                setNotification(message);
+                setTimeout(() => setNotification(''), 3500);
+            };
+
+            const handleLogin = (e) => {
+                e.preventDefault();
+                const user = USERS.find(u => u.username === loginData.username && u.password === loginData.password);
+                if (user) {
+                    setCurrentUser(user);
+                    setLoginError('');
+                    showToast('Selamat Datang di DigiDes!');
+                } else {
+                    setLoginError('Username atau Password salah!');
+                }
+            };
+
+            const handleLogout = () => {
+                setCurrentUser(null);
+                setActiveTab('dashboard');
+                setLoginData({username: '', password: ''});
+            };
+
+            const getPageTitle = () => {
+                switch(activeTab) {
+                    case 'dashboard': return 'Dashboard Utama';
+                    case 'penduduk': return 'Manajemen Data Penduduk';
+                    case 'dokumen': return 'Dokumen Arsip Desa';
+                    case 'kades': return 'Ruang Kerja KADES';
+                    case 'sekdes': return 'Ruang Kerja SEKDES';
+                    case 'kesejahteraan': return 'Ruang Kerja KASI KESEJAHTERAAN';
+                    case 'pelayanan': return documentToEdit ? 'Edit Dokumen Surat' : 'Layanan Surat (KASI PELAYANAN)';
+                    case 'pemerintahan': return 'Layanan PERTANAHAN & Pemerintahan';
+                    case 'perencanaan': return 'Ruang Kerja KAUR PERENCANAAN';
+                    case 'tu_umum': return 'Ruang Kerja KAUR TU & UMUM';
+                    case 'keuangan': return 'Ruang Kerja KAUR KEUANGAN';
+                    case 'kadus_1': return 'Ruang Kerja KADUS I';
+                    case 'kadus_2': return 'Ruang Kerja KADUS II';
+                    default: return 'Aplikasi DigiDes';
+                }
+            };
+
+            if (!currentUser) {
+                return (
+                    <div 
+                        className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gray-900"
+                        style={{ 
+                            backgroundImage: "url('https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=1200')", 
+                            backgroundSize: 'cover', 
+                            backgroundPosition: 'center',
+                            backgroundRepeat: 'no-repeat'
+                        }}
+                    >
+                        <div className="absolute inset-0 login-overlay"></div>
+                        
+                        <div className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full max-w-md z-10 border border-gray-200/50 dark:border-gray-700/50 mx-4 animate-fade-in">
+                            <div className="text-center mb-6">
+                                <h1 className="text-4xl font-black mb-2 tracking-tight" style={{ color: 'var(--theme-color)' }}>DigiDes</h1>
+                                <p className="text-gray-600 dark:text-gray-300 font-medium">Sistem Informasi Desa Keboledan</p>
+                            </div>
+                            
+                            <form onSubmit={handleLogin} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Username</label>
+                                    <div className="relative">
+                                        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"><Icon name="User" /></div>
+                                        <input 
+                                            type="text" 
+                                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:outline-none focus:border-transparent transition-all"
+                                            style={{ '--tw-ring-color': 'var(--theme-color)' }}
+                                            value={loginData.username}
+                                            onChange={(e) => setLoginData({...loginData, username: e.target.value})}
+                                            required placeholder="Masukkan username"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Password</label>
+                                    <div className="relative">
+                                        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"><Icon name="Lock" /></div>
+                                        <input 
+                                            type="password" 
+                                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:outline-none focus:border-transparent transition-all"
+                                            style={{ '--tw-ring-color': 'var(--theme-color)' }}
+                                            value={loginData.password}
+                                            onChange={(e) => setLoginData({...loginData, password: e.target.value})}
+                                            required placeholder="Masukkan password"
+                                        />
+                                    </div>
+                                </div>
+                                {loginError && <p className="text-red-500 text-sm text-center font-bold bg-red-50 dark:bg-red-900/20 p-2 rounded">{loginError}</p>}
+                                <button type="submit" className="w-full py-2.5 mt-2 rounded-xl text-white font-black shadow-lg transition-transform transform hover:scale-105" style={{ backgroundColor: 'var(--theme-color)' }}>
+                                    Masuk Sistem
+                                </button>
+                            </form>
+
+                            <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 text-xs text-center text-gray-500 dark:text-gray-400">
+                                Gunakan kredensial uji coba: <br/>
+                                <span className="inline-block mt-2 font-mono bg-gray-100 dark:bg-gray-900 p-2 rounded text-left">
+                                    <strong>U:</strong> kades &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | <strong>P:</strong> sairun123 <br/>
+                                    <strong>U:</strong> kasi_pelayanan | <strong>P:</strong> salafudin123 <br/>
+                                    <strong>U:</strong> kaur_pemerintahan| <strong>P:</strong> aminah123
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex transition-colors duration-300 print:bg-white print:text-black">
+                    {/* Notification Toast */}
+                    {notification && (
+                        <div className="fixed bottom-5 right-5 bg-gray-900 text-white dark:bg-white dark:text-gray-900 px-6 py-3 rounded-xl shadow-2xl z-50 flex items-center font-semibold border border-gray-700 dark:border-gray-200 animate-bounce">
+                            <span>{notification}</span>
+                        </div>
+                    )}
+
+                    {/* Sidebar */}
+                    <aside className="w-64 bg-white dark:bg-gray-800 shadow-xl flex flex-col print:hidden transition-colors duration-300 z-20 flex-shrink-0 h-screen">
+                        <div className="p-6 flex flex-col items-center border-b border-gray-200 dark:border-gray-700">
+                            <h2 className="text-2xl font-black mt-2 tracking-wide text-[var(--theme-color)]">DigiDes</h2>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 text-center font-bold mt-1">Desa Keboledan<br/>Kecamatan Wanasari</p>
+                        </div>
+                        
+                        <div className="p-4 flex-1 overflow-y-auto style-scrollbar font-sans">
+                            <p className="text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wider">Navigasi Utama</p>
+                            <nav className="space-y-1 mb-6">
+                                <MenuButton icon="LayoutDashboard" label="Dashboard" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
+                                <MenuButton icon="Users" label="Data Penduduk" active={activeTab === 'penduduk'} onClick={() => setActiveTab('penduduk')} />
+                                <MenuButton icon="FolderOpen" label="Dokumen Arsip" active={activeTab === 'dokumen'} onClick={() => setActiveTab('dokumen')} />
+                            </nav>
+
+                            <p className="text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wider">Layanan Utama</p>
+                            <nav className="space-y-1 mb-6">
+                                <MenuButton icon="FileSignature" label="KASI PELAYANAN (Surat)" active={activeTab === 'pelayanan'} onClick={() => { setDocumentToEdit(null); setActiveTab('pelayanan'); }} />
+                                <MenuButton icon="Map" label="PERTANAHAN (Kasi Pem)" active={activeTab === 'pemerintahan'} onClick={() => { setDocumentToEdit(null); setActiveTab('pemerintahan'); }} />
+                            </nav>
+
+                            <p className="text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wider">Ruang Kerja Perangkat</p>
+                            <nav className="space-y-1 pb-4">
+                                <MenuButton icon="Briefcase" label="KADES" active={activeTab === 'kades'} onClick={() => setActiveTab('kades')} />
+                                <MenuButton icon="Clipboard" label="SEKDES" active={activeTab === 'sekdes'} onClick={() => setActiveTab('sekdes')} />
+                                <MenuButton icon="Heart" label="KASI KESEJAHTERAAN" active={activeTab === 'kesejahteraan'} onClick={() => setActiveTab('kesejahteraan')} />
+                                <MenuButton icon="TrendingUp" label="KAUR PERENCANAAN" active={activeTab === 'perencanaan'} onClick={() => setActiveTab('perencanaan')} />
+                                <MenuButton icon="Archive" label="KAUR TU & UMUM" active={activeTab === 'tu_umum'} onClick={() => setActiveTab('tu_umum')} />
+                                <MenuButton icon="Wallet" label="KAUR KEUANGAN" active={activeTab === 'keuangan'} onClick={() => setActiveTab('keuangan')} />
+                                <MenuButton icon="MapIcon" label="KADUS I" active={activeTab === 'kadus_1'} onClick={() => setActiveTab('kadus_1')} />
+                                <MenuButton icon="MapIcon" label="KADUS II" active={activeTab === 'kadus_2'} onClick={() => setActiveTab('kadus_2')} />
+                            </nav>
+                        </div>
+
+                        <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                            <div className="flex items-center mb-4">
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold" style={{ backgroundColor: 'var(--theme-color)' }}>
+                                    {currentUser.name.charAt(0)}
+                                </div>
+                                <div className="ml-3 overflow-hidden">
+                                    <p className="text-sm font-bold truncate">{currentUser.name}</p>
+                                    <p className="text-xs text-gray-500 truncate">{currentUser.role}</p>
+                                </div>
+                            </div>
+                            <button onClick={handleLogout} className="flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/40 p-2 rounded-lg text-sm font-semibold w-full transition-colors">
+                                <Icon name="LogOut" size={16} className="mr-2" /> Keluar Sistem
+                            </button>
+                        </div>
+                    </aside>
+
+                    {/* Main Content Area */}
+                    <main className="flex-1 flex flex-col h-screen overflow-hidden print:h-auto print:overflow-visible relative">
+                        <header className="h-16 bg-white dark:bg-gray-800 shadow-sm flex items-center justify-between px-8 print:hidden transition-colors duration-300 z-10 flex-shrink-0">
+                            <h1 className="text-xl font-bold text-gray-800 dark:text-white">
+                                {getPageTitle()}
+                            </h1>
+                            
+                            <div className="flex items-center space-x-4">
+                                <div className="flex items-center space-x-2 border-r border-gray-200 dark:border-gray-700 pr-4">
+                                    <Icon name="Palette" size={18} className="text-gray-500" />
+                                    <button onClick={() => setThemeColor('#2563eb')} className={`w-6 h-6 rounded-full bg-blue-600 border-2 ${themeColor === '#2563eb' ? 'border-gray-800 dark:border-white' : 'border-transparent'}`}></button>
+                                    <button onClick={() => setThemeColor('#16a34a')} className={`w-6 h-6 rounded-full bg-green-600 border-2 ${themeColor === '#16a34a' ? 'border-gray-800 dark:border-white' : 'border-transparent'}`}></button>
+                                    <button onClick={() => setThemeColor('#dc2626')} className={`w-6 h-6 rounded-full bg-red-600 border-2 ${themeColor === '#dc2626' ? 'border-gray-800 dark:border-white' : 'border-transparent'}`}></button>
+                                    <button onClick={() => setThemeColor('#d97706')} className={`w-6 h-6 rounded-full bg-amber-600 border-2 ${themeColor === '#d97706' ? 'border-gray-800 dark:border-white' : 'border-transparent'}`}></button>
+                                </div>
+                                <button onClick={() => setThemeMode(themeMode === 'light' ? 'dark' : 'light')} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                                    {themeMode === 'light' ? <Icon name="Moon" size={20} /> : <Icon name="Sun" size={20} />}
+                                </button>
+                            </div>
+                        </header>
+
+                        {}
+                        <div className="flex-1 overflow-y-auto p-4 md:p-8 print:p-0 print:m-0 print:overflow-visible relative style-scrollbar bg-slate-100 dark:bg-gray-900">
+                            {activeTab === 'dashboard' && <DashboardPanel user={currentUser} stats={{ penduduk: penduduk.length, surat: 142, dokumen: dokumen.length }} />}
+                            {activeTab === 'penduduk' && <PendudukPanel penduduk={penduduk} setPenduduk={setPenduduk} showToast={showToast} />}
+                            {activeTab === 'dokumen' && <DokumenPanel dokumen={dokumen} setDokumen={setDokumen} setDocumentToEdit={setDocumentToEdit} setActiveTab={setActiveTab} />}
+                            
+                            {/* Upgraded Workspaces for Kades, Sekdes, and other officials */}
+                            {activeTab === 'kades' && <WorkspaceDocsModule category="KADES" icon="Briefcase" docs={workspaceDocs} setDocs={setWorkspaceDocs} files={uploadedFiles} setFiles={setUploadedFiles} description="Arsip, disposisi, dan pembuatan dokumen kerja Kepala Desa." showToast={showToast} />}
+                            {activeTab === 'sekdes' && <WorkspaceDocsModule category="SEKDES" icon="Clipboard" docs={workspaceDocs} setDocs={setWorkspaceDocs} files={uploadedFiles} setFiles={setUploadedFiles} description="Arsip administrasi umum dan penyusunan laporan Sekretaris Desa." showToast={showToast} />}
+                            {activeTab === 'kesejahteraan' && <WorkspaceDocsModule category="KASI KESEJAHTERAAN" icon="Heart" docs={workspaceDocs} setDocs={setWorkspaceDocs} files={uploadedFiles} setFiles={setUploadedFiles} description="Arsip pelayanan sosial dan kesejahteraan masyarakat." showToast={showToast} />}
+                            {activeTab === 'perencanaan' && <WorkspaceDocsModule category="KAUR PERENCANAAN" icon="TrendingUp" docs={workspaceDocs} setDocs={setWorkspaceDocs} files={uploadedFiles} setFiles={setUploadedFiles} description="Pembuatan dokumen perencanaan strategis desa, RAB, dan RKP." showToast={showToast} />}
+                            {activeTab === 'tu_umum' && <WorkspaceDocsModule category="KAUR TU & UMUM" icon="Archive" docs={workspaceDocs} setDocs={setWorkspaceDocs} files={uploadedFiles} setFiles={setUploadedFiles} description="Inventarisasi aset desa dan pengelolaan tata usaha internal." showToast={showToast} />}
+                            {activeTab === 'keuangan' && <WorkspaceDocsModule category="KAUR KEUANGAN" icon="Wallet" docs={workspaceDocs} setDocs={setWorkspaceDocs} files={uploadedFiles} setFiles={setUploadedFiles} description="Penyusunan anggaran keuangan, SPJ, dan pencairan dana desa." showToast={showToast} />}
+                            {activeTab === 'kadus_1' && <WorkspaceDocsModule category="KADUS I" icon="MapIcon" docs={workspaceDocs} setDocs={setWorkspaceDocs} files={uploadedFiles} setFiles={setUploadedFiles} description="Laporan statistik kependudukan dan pembangunan di wilayah Dusun I." showToast={showToast} />}
+                            {activeTab === 'kadus_2' && <WorkspaceDocsModule category="KADUS II" icon="MapIcon" docs={workspaceDocs} setDocs={setWorkspaceDocs} files={uploadedFiles} setFiles={setUploadedFiles} description="Laporan statistik kependudukan dan pembangunan di wilayah Dusun II." showToast={showToast} />}
+                            
+                            {activeTab === 'pelayanan' && <SuratPanel penduduk={penduduk} setDokumen={setDokumen} documentToEdit={documentToEdit} setDocumentToEdit={setDocumentToEdit} showToast={showToast} />}
+                            {activeTab === 'pemerintahan' && <PertanahanPanel penduduk={penduduk} setDokumen={setDokumen} files={uploadedFiles} setFiles={setUploadedFiles} documentToEdit={documentToEdit} setDocumentToEdit={setDocumentToEdit} showToast={showToast} />}
+                        </div>
+                    </main>
+                </div>
+            );
+
+            // Sub-components mapped to App scope
+            function MenuButton({ icon, label, active, onClick }) {
+                return (
+                    <button 
+                        onClick={onClick}
+                        className={`w-full flex items-center px-4 py-3 rounded-lg transition-colors ${
+                            active ? 'bg-opacity-10 text-[var(--theme-color)] font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                        }`}
+                        style={active ? { backgroundColor: 'color-mix(in srgb, var(--theme-color) 15%, transparent)' } : {}}
+                    >
+                        <Icon name={icon} size={18} className="mr-3 flex-shrink-0" />
+                        <span className="truncate">{label}</span>
+                    </button>
+                );
+            }
+        }
+
+        function DashboardPanel({ user, stats }) {
+            return (
+                <div className="space-y-6 animate-fade-in font-sans">
+                    <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
+                        <h2 className="text-3xl font-black mb-2">Selamat Datang, {user.name}</h2>
+                        <p className="text-gray-500 dark:text-gray-400 text-lg">Anda login sebagai <span className="font-semibold text-[var(--theme-color)]">{user.role}</span></p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <StatCard icon="Users" title="Total Penduduk" value={stats.penduduk} color="bg-blue-500" />
+                        <StatCard icon="FileSignature" title="Surat Dicetak Bulan Ini" value={stats.surat} color="bg-green-500" />
+                        <StatCard icon="FolderOpen" title="Dokumen Tersimpan" value={stats.dokumen} color="bg-purple-500" />
+                    </div>
+                </div>
+            );
+        }
+
+        function StatCard({ icon, title, value, color }) {
+            return (
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 flex items-center transition-transform hover:scale-105 font-sans">
+                    <div className={`${color} p-4 rounded-xl text-white mr-4 shadow-lg`}><Icon name={icon} size={24} /></div>
+                    <div><p className="text-sm text-gray-500 dark:text-gray-400 font-semibold">{title}</p><p className="text-2xl font-bold">{value}</p></div>
+                </div>
+            );
+        }
+
+        function Input({ label, value, onChange, placeholder, type = "text", font = "" }) {
+            return (
+                <div className="font-sans">
+                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{label}</label>
+                    <input type={type} className={`w-full p-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 outline-none focus:ring-2 focus:border-transparent ${font}`} style={{ '--tw-ring-color': 'var(--theme-color)' }} value={value} onChange={onChange} placeholder={placeholder} />
+                </div>
+            );
+        }
+
+        function Textarea({ label, value, onChange, placeholder, rows = 3 }) {
+            return (
+                <div className="font-sans">
+                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">{label}</label>
+                    <textarea className="w-full p-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': 'var(--theme-color)' }} value={value} onChange={onChange} placeholder={placeholder} rows={rows}></textarea>
+                </div>
+            );
+        }
+
+        function KopSurat() {
+            return (
+                <div className="border-b-4 border-double border-black pb-4 mb-2 flex items-center justify-between font-sans">
+                    <div className="w-24 h-24 flex items-center justify-center font-bold text-center border-2 border-black rounded p-1 text-xs">
+                        LOGO<br/>KABUPATEN
+                    </div>
+                    <div className="text-center flex-1 mx-4">
+                        <h1 className="text-xl font-bold uppercase tracking-widest leading-tight">Pemerintah Kabupaten Brebes</h1>
+                        <h2 className="text-xl font-bold uppercase tracking-widest leading-tight">Kecamatan Wanasari</h2>
+                        <h2 className="text-2xl font-black uppercase tracking-widest mt-0.5" style={{ color: '#000' }}>Desa Keboledan</h2>
+                        <p className="text-xs mt-1 font-semibold">Alamat: Jl. Raya Keboledan No. 1, Kec. Wanasari, Kab. Brebes - Kode Pos 52252</p>
+                    </div>
+                    <div className="w-24 h-24"></div>
+                </div>
+            );
+        }
+
+        function TandaTangan({ today, pejabat }) {
+            return (
+                <div className="mt-12 flex justify-end break-inside-avoid text-black font-sans">
+                    <div className="text-center w-64">
+                        <p className="mb-1">Keboledan, {today}</p>
+                        <p className="mb-20 font-semibold">{pejabat === 'KADES' ? 'Kepala Desa Keboledan' : 'Sekretaris Desa'}</p>
+                        <p className="font-bold underline uppercase">{pejabat === 'KADES' ? 'S A I R U N' : 'M A S H A R U D I N'}</p>
+                    </div>
+                </div>
+            );
+        }
+
+        function DynamicTable({ title, colorTheme, data, setData, defaultObj }) {
+            const addRow = () => setData([...data, { ...defaultObj }]);
+            const updateRow = (index, field, value) => {
+                const newData = [...data]; newData[index][field] = value; setData(newData);
+            };
+            const removeRow = (index) => setData(data.filter((_, i) => i !== index));
+
+            return (
+                <div className={`mt-4 bg-white dark:bg-gray-800 p-4 rounded-xl border border-${colorTheme}-200 dark:border-gray-600 shadow-sm overflow-x-auto font-sans`}>
+                    <div className="flex justify-between items-center mb-4">
+                        <h4 className="font-bold">{title}</h4>
+                        <button onClick={addRow} className={`px-3 py-1 bg-${colorTheme}-500 text-white rounded text-sm hover:opacity-90 flex items-center`}><Icon name="Plus" size={12} className="mr-1" /> Tambah Baris</button>
+                    </div>
+                    <table className="w-full text-sm border-collapse min-w-[600px]">
+                        <thead>
+                            <tr className="bg-gray-100 dark:bg-gray-700">
+                                {Object.keys(defaultObj).map(k => <th key={k} className="p-2 border dark:border-gray-600 capitalize text-left">{k.replace(/_/g, ' ')}</th>)}
+                                <th className="p-2 border dark:border-gray-600 w-16 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {data.map((row, i) => (
+                                <tr key={i}>
+                                    {Object.keys(defaultObj).map(k => (
+                                        <td key={k} className="p-1 border dark:border-gray-600">
+                                            <input type="text" className="w-full p-1.5 bg-transparent outline-none border-b border-transparent focus:border-gray-400 dark:focus:border-gray-500" value={row[k]} onChange={(e) => updateRow(i, k, e.target.value)} placeholder={`Input ${k}...`} />
+                                        </td>
+                                    ))}
+                                    <td className="p-1 border dark:border-gray-600 text-center"><button onClick={() => removeRow(i)} className="text-red-500 hover:text-red-700 p-1"><Icon name="Trash2" /></button></td>
+                                </tr>
+                            ))}
+                            {data.length === 0 && <tr><td colSpan={Object.keys(defaultObj).length + 1} className="p-4 text-center text-gray-400">Tidak ada data. Klik Tambah Baris.</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        }
+
+        function SuratPanel({ penduduk, setDokumen, documentToEdit, setDocumentToEdit, showToast }) {
+            const generateNoSurat = () => `470 / ${String(Math.floor(Math.random() * 900) + 100).padStart(3, '0')} / ${new Date().getFullYear()}`;
+            const [jenis, setJenis] = useState(JENIS_SURAT[0]);
+            const [pejabat, setPejabat] = useState('KADES');
+            const [showPreview, setShowPreview] = useState(false);
+            
+            // Comprehensive State including new fields for Surat Kuasa and Usaha Pertanian
+            const [formData, setFormData] = useState({
+                nomor_surat: generateNoSurat(), nama: '', nik: '', ttl: '', jk: 'Laki-laki', agama: '', pekerjaan: '', alamat: '', keperluan: '',
+                keterangan_bebas: '', judul_kustom: '', keterangan_kustom: '',
+                // Surat Kuasa Specific
+                kuasa_p1_nama: '', kuasa_p1_nik: '', kuasa_p1_pekerjaan: '', kuasa_p1_alamat: '',
+                kuasa_p2_nama: '', kuasa_p2_nik: '', kuasa_p2_pekerjaan: '', kuasa_p2_alamat: '',
+                kuasa_perihal: '',
+                // Pertanian Specific
+                tani_luas_tanam: '', tani_luas_tanah: '', tani_luas_garapan: '', tani_lokasi: '', tani_lama_usaha: ''
+            });
+
+            const handleCariPenduduk = (e) => {
+                const nik = e.target.value; setFormData({...formData, nik: nik});
+                const p = penduduk.find(x => x.nik === nik);
+                if(p) setFormData(prev => ({ ...prev, nama: p.nama, ttl: p.ttl, jk: p.jk, alamat: p.alamat, agama: p.agama, pekerjaan: p.pekerjaan }));
+            };
+
+            const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+            
+            useEffect(() => {
+                if (documentToEdit && documentToEdit.category === 'umum') {
+                    setJenis(documentToEdit.jenis_form); setPejabat(documentToEdit.pejabat);
+                    if (documentToEdit.formData) setFormData(documentToEdit.formData);
+                    setShowPreview(true);
+                } else {
+                    setFormData({ 
+                        nomor_surat: generateNoSurat(), nama: '', nik: '', ttl: '', jk: 'Laki-laki', agama: '', pekerjaan: '', alamat: '', keperluan: '', 
+                        keterangan_bebas: '', judul_kustom: '', keterangan_kustom: '',
+                        kuasa_p1_nama: '', kuasa_p1_nik: '', kuasa_p1_pekerjaan: '', kuasa_p1_alamat: '',
+                        kuasa_p2_nama: '', kuasa_p2_nik: '', kuasa_p2_pekerjaan: '', kuasa_p2_alamat: '',
+                        kuasa_perihal: '',
+                        tani_luas_tanam: '', tani_luas_tanah: '', tani_luas_garapan: '', tani_lokasi: '', tani_lama_usaha: ''
+                    });
+                    setShowPreview(false);
+                }
+            }, [documentToEdit, jenis]);
+
+            const handleSimpanDokumen = () => {
+                const docTitle = jenis === "Surat Keterangan ( Custom )" ? formData.judul_kustom : jenis;
+                const isEdit = documentToEdit && documentToEdit.id;
+                const newDoc = {
+                    id: isEdit ? documentToEdit.id : Date.now(), tanggal: today, nomor: formData.nomor_surat,
+                    jenis: docTitle || 'Surat Keterangan', pemohon: formData.nama || formData.kuasa_p1_nama || 'Tidak diketahui', keterangan: formData.keterangan_bebas || '-',
+                    jenis_form: jenis, pejabat: pejabat, category: 'umum', formData: formData
+                };
+                if (isEdit) { 
+                    setDokumen(prev => prev.map(d => d.id === documentToEdit.id ? newDoc : d)); 
+                    showToast("Arsip surat diperbarui!"); 
+                } else { 
+                    setDokumen(prev => [newDoc, ...prev]); 
+                    showToast("Surat berhasil diarsipkan!"); 
+                }
+            };
+
+            // Word Export Function for General Certificates
+            const exportToWord = () => {
+                const element = document.getElementById('printable-area');
+                if (!element) return;
+                const htmlContent = `
+                    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+                    <head>
+                        <title>${jenis}</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; padding: 20px; line-height: 1.6; color: #000; }
+                            table { width: 100%; border-collapse: collapse; }
+                            td { padding: 4px; }
+                        </style>
+                    </head>
+                    <body>
+                        ${element.innerHTML}
+                    </body>
+                    </html>
+                `;
+                const blob = new Blob(['\ufeff' + htmlContent], { type: 'application/msword' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${jenis.replace(/\s+/g, '_')}_${formData.nomor_surat.replace(/\//g, '-')}.doc`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                showToast("Mengekspor Surat ke MS Word...");
+            };
+
+            // Excel Export Function for General Certificates
+            const exportToExcel = () => {
+                let htmlTable = `
+                    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+                    <head>
+                        <meta charset="UTF-8">
+                        <style>
+                            th { background-color: #2563eb; color: #white; font-family: Arial; font-weight: bold; border: 0.5pt solid black; }
+                            td { font-family: Arial; border: 0.5pt solid black; }
+                        </style>
+                    </head>
+                    <body>
+                        <table>
+                            <tr><th colspan="3" style="font-size: 14pt; height: 35px; text-align: center; background-color: #e2e8f0; color: #000;">DATA ARSIP SURAT TERBIT - ${jenis}</th></tr>
+                            <tr><td style="font-weight:bold;">Nomor Surat</td><td colspan="2" style="font-family: monospace;">${formData.nomor_surat}</td></tr>
+                            <tr><td style="font-weight:bold;">Tanggal Terbit</td><td colspan="2">${today}</td></tr>
+                            <tr><td style="font-weight:bold;">Penandatangan</td><td colspan="2">${pejabat === 'KADES' ? 'Kepala Desa' : 'Sekretaris Desa'}</td></tr>
+                            <tr><td colspan="3" style="background-color: #f1f5f9; font-weight: bold; text-align: center;">Rincian Isian Surat</td></tr>
+                `;
+
+                if (jenis === "Surat Kuasa") {
+                    htmlTable += `
+                        <tr><td><strong>Nama Pemberi Kuasa (P1)</strong></td><td colspan="2">${formData.kuasa_p1_nama}</td></tr>
+                        <tr><td><strong>NIK Pemberi Kuasa</strong></td><td colspan="2">${formData.kuasa_p1_nik}</td></tr>
+                        <tr><td><strong>Nama Penerima Kuasa (P2)</strong></td><td colspan="2">${formData.kuasa_p2_nama}</td></tr>
+                        <tr><td><strong>NIK Penerima Kuasa</strong></td><td colspan="2">${formData.kuasa_p2_nik}</td></tr>
+                        <tr><td><strong>Wewenang / Kuasa Perihal</strong></td><td colspan="2">${formData.kuasa_perihal}</td></tr>
+                    `;
+                } else if (jenis === "Surat Keterangan Usaha Pertanian") {
+                    htmlTable += `
+                        <tr><td><strong>Nama Petani / Pemohon</strong></td><td colspan="2">${formData.nama}</td></tr>
+                        <tr><td><strong>NIK</strong></td><td colspan="2">${formData.nik}</td></tr>
+                        <tr><td><strong>Luas Tanam</strong></td><td colspan="2">${formData.tani_luas_tanam}</td></tr>
+                        <tr><td><strong>Luas Tanah</strong></td><td colspan="2">${formData.tani_luas_tanah}</td></tr>
+                        <tr><td><strong>Luas Garapan</strong></td><td colspan="2">${formData.tani_luas_garapan}</td></tr>
+                        <tr><td><strong>Lokasi Lahan</strong></td><td colspan="2">${formData.tani_lokasi}</td></tr>
+                        <tr><td><strong>Lama Usaha</strong></td><td colspan="2">${formData.tani_lama_usaha}</td></tr>
+                    `;
+                } else {
+                    htmlTable += `
+                        <tr><td><strong>Nama Pemohon</strong></td><td colspan="2">${formData.nama}</td></tr>
+                        <tr><td><strong>NIK</strong></td><td colspan="2">${formData.nik}</td></tr>
+                        <tr><td><strong>Tempat, Tgl Lahir</strong></td><td colspan="2">${formData.ttl}</td></tr>
+                        <tr><td><strong>Jenis Kelamin</strong></td><td colspan="2">${formData.jk}</td></tr>
+                        <tr><td><strong>Agama</strong></td><td colspan="2">${formData.agama}</td></tr>
+                        <tr><td><strong>Pekerjaan</strong></td><td colspan="2">${formData.pekerjaan}</td></tr>
+                        <tr><td><strong>Alamat Domisili</strong></td><td colspan="2">${formData.alamat}</td></tr>
+                        <tr><td><strong>Keperluan</strong></td><td colspan="2">${formData.keperluan}</td></tr>
+                    `;
+                }
+
+                if (formData.keterangan_bebas) {
+                    htmlTable += `<tr><td><strong>Catatan Bebas</strong></td><td colspan="2" style="font-style: italic;">${formData.keterangan_bebas}</td></tr>`;
+                }
+
+                htmlTable += `</table></body></html>`;
+
+                const blob = new Blob(['\ufeff' + htmlTable], { type: 'application/vnd.ms-excel' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${jenis.replace(/\s+/g, '_')}_${formData.nomor_surat.replace(/\//g, '-')}.xls`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                showToast("Mengekspor data ke MS Excel...");
+            };
+
+            return (
+                <div className="bg-white dark:bg-gray-800 p-4 md:p-8 rounded-xl print:bg-white print:p-0 min-h-full relative overflow-auto animate-fade-in text-black">
+                    {showPreview ? (
+                        <div>
+                            <div className="mb-6 flex flex-wrap gap-4 justify-between items-center print-hide bg-white dark:bg-gray-700 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-600">
+                                <button onClick={() => { setShowPreview(false); }} className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 flex items-center transition">
+                                    <Icon name="X" size={16} className="mr-2" /> Kembali Edit
+                                </button>
+                                <div className="flex flex-wrap gap-3">
+                                    <button onClick={handleSimpanDokumen} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center shadow transition">
+                                        <Icon name="Save" size={16} className="mr-2" /> {documentToEdit ? 'Update Arsip' : 'Arsipkan'}
+                                    </button>
+                                    <button onClick={exportToWord} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center shadow transition">
+                                        <Icon name="FileWord" size={16} className="mr-2" /> Export Word
+                                    </button>
+                                    <button onClick={exportToExcel} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center shadow transition">
+                                        <Icon name="FileExcel" size={16} className="mr-2" /> Export Excel
+                                    </button>
+                                    <button onClick={() => window.print()} className="px-4 py-2 text-white rounded-lg flex items-center shadow-lg hover:opacity-90 transition transform hover:scale-105" style={{ backgroundColor: 'var(--theme-color)' }}>
+                                        <Icon name="Printer" size={16} className="mr-2" /> Cetak / Save PDF
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* SURAT RENDERER - Pure Arial style */}
+                            <div id="printable-area" className="bg-white text-black p-10 max-w-4xl mx-auto shadow-2xl min-h-[297mm] print:shadow-none print:p-0" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
+                                <KopSurat />
+                                <div className="text-center mb-8 mt-6">
+                                    <h3 className="text-xl font-bold uppercase underline leading-tight tracking-wide">{jenis === "Surat Keterangan ( Custom )" ? (formData.judul_kustom || 'SURAT KETERANGAN') : jenis}</h3>
+                                    <p className="text-md mt-1 font-semibold">Nomor : {formData.nomor_surat}</p>
+                                </div>
+                                <div className="text-justify leading-relaxed mb-8 text-base">
+                                    {/* Handle Custom Letter */}
+                                    {jenis === "Surat Keterangan ( Custom )" && (
+                                        <div>
+                                            <div className="my-4 whitespace-pre-wrap">{formData.keterangan_kustom || 'Tuliskan isi surat secara manual di sini...'}</div>
+                                        </div>
+                                    )}
+
+                                    {/* Handle Surat Kuasa Specific Layout */}
+                                    {jenis === "Surat Kuasa" && (
+                                        <div>
+                                            <p className="mb-4">Yang bertandatangan di bawah ini disebut sebagai <strong>Pihak Ke-1 (Pemberi Kuasa)</strong>:</p>
+                                            <table className="w-full mb-6 ml-6">
+                                                <tbody>
+                                                    <tr><td className="w-48 py-1">Nama Lengkap</td><td className="w-4">:</td><td className="font-bold uppercase">{formData.kuasa_p1_nama || '......................................'}</td></tr>
+                                                    <tr><td className="py-1">NIK</td><td>:</td><td>{formData.kuasa_p1_nik || '......................................'}</td></tr>
+                                                    <tr><td className="py-1">Pekerjaan</td><td>:</td><td>{formData.kuasa_p1_pekerjaan || '......................................'}</td></tr>
+                                                    <tr><td className="py-1">Alamat</td><td>:</td><td>{formData.kuasa_p1_alamat || '......................................'}</td></tr>
+                                                </tbody>
+                                            </table>
+
+                                            <p className="mb-4">Memberikan kuasa sepenuhnya kepada <strong>Pihak Ke-2 (Penerima Kuasa)</strong>:</p>
+                                            <table className="w-full mb-6 ml-6">
+                                                <tbody>
+                                                    <tr><td className="w-48 py-1">Nama Lengkap</td><td className="w-4">:</td><td className="font-bold uppercase">{formData.kuasa_p2_nama || '......................................'}</td></tr>
+                                                    <tr><td className="py-1">NIK</td><td>:</td><td>{formData.kuasa_p2_nik || '......................................'}</td></tr>
+                                                    <tr><td className="py-1">Pekerjaan</td><td>:</td><td>{formData.kuasa_p2_pekerjaan || '......................................'}</td></tr>
+                                                    <tr><td className="py-1">Alamat</td><td>:</td><td>{formData.kuasa_p2_alamat || '......................................'}</td></tr>
+                                                </tbody>
+                                            </table>
+
+                                            <p className="mb-4 indent-8">
+                                                Bahwa dengan surat ini, <strong>Pihak Ke-1</strong> menguasakan kepada <strong>Pihak Ke-2</strong> untuk:
+                                            </p>
+                                            <p className="font-bold bg-gray-50 p-4 border rounded-lg text-center my-4 italic">
+                                                "{formData.kuasa_perihal || '.........................................................................................................'}"
+                                            </p>
+                                            <p className="indent-8">Demikian surat kuasa ini dibuat dengan penuh kesadaran dan tanggung jawab tanpa paksaan dari pihak manapun agar dapat digunakan sebagaimana mestinya.</p>
+                                            
+                                            {/* Dual signature for Surat Kuasa */}
+                                            <div className="mt-12 grid grid-cols-2 text-center break-inside-avoid">
+                                                <div>
+                                                    <p className="mb-20">Penerima Kuasa (Pihak Ke-2)</p>
+                                                    <p className="font-bold underline uppercase">{formData.kuasa_p2_nama || '...............................'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="mb-20">Keboledan, {today}<br/>Pemberi Kuasa (Pihak Ke-1)</p>
+                                                    <p className="font-bold underline uppercase">{formData.kuasa_p1_nama || '...............................'}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Handle Surat Keterangan Usaha Pertanian layout */}
+                                    {jenis === "Surat Keterangan Usaha Pertanian" && (
+                                        <div>
+                                            <p className="mb-4 indent-8">Yang bertanda tangan di bawah ini Kepala Desa Keboledan, Kecamatan Wanasari, Kabupaten Brebes menerangkan bahwa:</p>
+                                            <table className="w-full mb-6 ml-6">
+                                                <tbody>
+                                                    <tr><td className="w-48 py-1.5">Nama Lengkap</td><td className="w-4">:</td><td className="font-bold uppercase">{formData.nama || '......................................'}</td></tr>
+                                                    <tr><td className="py-1.5">NIK</td><td>:</td><td>{formData.nik || '......................................'}</td></tr>
+                                                    <tr><td className="py-1.5">Tempat, Tgl Lahir</td><td>:</td><td>{formData.ttl || '......................................'}</td></tr>
+                                                    <tr><td className="py-1.5">Alamat Domisili</td><td>:</td><td>{formData.alamat || '......................................'}</td></tr>
+                                                </tbody>
+                                            </table>
+                                            <p className="mb-4 indent-8">Bahwa nama tersebut di atas benar memiliki usaha di sektor pertanian dengan rincian data sebagai berikut:</p>
+                                            <table className="w-full mb-6 ml-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                                <tbody>
+                                                    <tr><td className="w-48 py-1.5 font-semibold">Luas Tanam</td><td className="w-4">:</td><td>{formData.tani_luas_tanam || '......................................'}</td></tr>
+                                                    <tr><td className="py-1.5 font-semibold">Luas Tanah</td><td>:</td><td>{formData.tani_luas_tanah || '......................................'}</td></tr>
+                                                    <tr><td className="py-1.5 font-semibold">Luas Garapan</td><td>:</td><td>{formData.tani_luas_garapan || '......................................'}</td></tr>
+                                                    <tr><td className="py-1.5 font-semibold">Lokasi Lahan</td><td>:</td><td>{formData.tani_lokasi || '......................................'}</td></tr>
+                                                    <tr><td className="py-1.5 font-semibold">Lama Usaha</td><td>:</td><td>{formData.tani_lama_usaha || '......................................'}</td></tr>
+                                                </tbody>
+                                            </table>
+                                            <p className="indent-8">Demikian surat keterangan usaha pertanian ini kami terbitkan dengan sebenarnya untuk digunakan sesuai keperluannya.</p>
+                                        </div>
+                                    )}
+
+                                    {/* Handle Standard Letters (all other types) */}
+                                    {jenis !== "Surat Keterangan ( Custom )" && jenis !== "Surat Kuasa" && jenis !== "Surat Keterangan Usaha Pertanian" && (
+                                        <>
+                                            <p className="mb-6 indent-8">Yang bertanda tangan di bawah ini {pejabat === 'KADES' ? 'Kepala Desa' : 'Sekretaris Desa'} Keboledan, Kecamatan Wanasari, Kabupaten Brebes, menerangkan dengan sebenarnya bahwa:</p>
+                                            <table className="w-full mb-6 ml-8">
+                                                <tbody>
+                                                    <tr><td className="w-48 py-2">Nama Lengkap</td><td className="w-4">:</td><td className="font-bold uppercase">{formData.nama || '......................................'}</td></tr>
+                                                    <tr><td className="py-2">NIK / No KTP</td><td>:</td><td>{formData.nik || '......................................'}</td></tr>
+                                                    <tr><td className="py-2">Tempat, Tgl Lahir</td><td>:</td><td>{formData.ttl || '......................................'}</td></tr>
+                                                    <tr><td className="py-2">Jenis Kelamin</td><td>:</td><td>{formData.jk}</td></tr>
+                                                    <tr><td className="py-2">Agama</td><td>:</td><td>{formData.agama || '......................................'}</td></tr>
+                                                    <tr><td className="py-2">Pekerjaan</td><td>:</td><td>{formData.pekerjaan || '......................................'}</td></tr>
+                                                    <tr><td className="py-2 align-top">Alamat Domisili</td><td className="align-top">:</td><td>{formData.alamat || '......................................'}</td></tr>
+                                                </tbody>
+                                            </table>
+                                            <p className="my-4 indent-8">Orang tersebut di atas benar-benar warga Desa Keboledan yang saat ini berdomisili di alamat tersebut. Surat keterangan ini diberikan kepada yang bersangkutan untuk keperluan:</p>
+                                            <p className="font-bold text-center my-6 uppercase underline">"{formData.keperluan || '......................................................'}"</p>
+                                            <p className="indent-8 mt-6">Demikian surat keterangan ini dibuat dengan sebenarnya agar dapat dipergunakan sebagaimana mestinya oleh pihak yang berkepentingan.</p>
+                                        </>
+                                    )}
+
+                                    {}
+                                    {formData.keterangan_bebas && (
+                                        <div className="mt-6 pt-4 border-t border-dashed border-black">
+                                            <p className="font-bold text-sm italic">Keterangan Tambahan / Catatan Penting:</p>
+                                            <p className="text-sm bg-gray-50 p-3 rounded border italic whitespace-pre-wrap">{formData.keterangan_bebas}</p>
+                                        </div>
+                                    )}
+                                </div>
+                                {jenis !== "Surat Kuasa" && <TandaTangan today={today} pejabat={pejabat} />}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl p-2 font-sans dark:text-white">
+                            <div className="flex justify-between items-center border-b pb-4 mb-6 dark:border-gray-700">
+                                <h2 className="text-2xl font-black flex items-center"><Icon name="FileSignature" size={24} className="mr-3 text-[var(--theme-color)]" /> Layanan Surat Kasi Pelayanan</h2>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 bg-gray-50 dark:bg-gray-700/30 p-4 rounded-xl border border-gray-100 dark:border-gray-600">
+                                <div className="md:col-span-1">
+                                    <label className="block text-sm font-bold mb-2">Pilih Jenis Surat</label>
+                                    <select className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 font-semibold text-[var(--theme-color)] focus:ring-2 outline-none" value={jenis} onChange={(e) => setJenis(e.target.value)}>
+                                        {JENIS_SURAT.map(j => <option key={j} value={j}>{j}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold mb-2">Penandatangan</label>
+                                    <select className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:ring-2 outline-none" value={pejabat} onChange={(e) => setPejabat(e.target.value)}>
+                                        <option value="KADES">Kepala Desa (SAIRUN)</option><option value="SEKDES">Sekretaris Desa (MASHARUDIN)</option>
+                                    </select>
+                                </div>
+                                <div><Input label="Nomor Surat (Auto/Edit)" value={formData.nomor_surat} onChange={e => setFormData({...formData, nomor_surat: e.target.value})} font="font-mono" /></div>
+                            </div>
+                            
+                            {/* Form Input Fields rendering dynamically based on Selected Type */}
+                            <div className="space-y-4">
+                                {jenis === "Surat Keterangan ( Custom )" ? (
+                                    <div className="space-y-4 animate-fade-in bg-indigo-50 dark:bg-indigo-900/10 p-6 rounded-xl border border-indigo-200 dark:border-indigo-900/30">
+                                        <h3 className="font-bold text-indigo-800 dark:text-indigo-300 mb-4">Layanan Surat Keterangan Custom</h3>
+                                        <Input label="Judul Surat Kustom" value={formData.judul_kustom} onChange={e => setFormData({...formData, judul_kustom: e.target.value})} placeholder="Contoh: SURAT KETERANGAN USAHA / LAINNYA" />
+                                        <Textarea label="Isi Keterangan Surat" value={formData.keterangan_kustom} onChange={e => setFormData({...formData, keterangan_kustom: e.target.value})} placeholder="Ketikkan seluruh isi paragraf surat di sini. Linebreak akan dipertahankan pada saat cetak." rows={10} />
+                                    </div>
+                                ) : jenis === "Surat Kuasa" ? (
+                                    <div className="space-y-6 animate-fade-in">
+                                        <div className="bg-blue-50 dark:bg-blue-900/10 p-5 rounded-xl border border-blue-200 dark:border-blue-900/20">
+                                            <h3 className="font-bold text-blue-800 dark:text-blue-300 mb-3">Pihak Ke-1 (Pemberi Kuasa)</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <Input label="Nama Lengkap Pihak 1" value={formData.kuasa_p1_nama} onChange={e => setFormData({...formData, kuasa_p1_nama: e.target.value})} />
+                                                <Input label="NIK Pihak 1" value={formData.kuasa_p1_nik} onChange={e => setFormData({...formData, kuasa_p1_nik: e.target.value})} />
+                                                <Input label="Pekerjaan" value={formData.kuasa_p1_pekerjaan} onChange={e => setFormData({...formData, kuasa_p1_pekerjaan: e.target.value})} />
+                                                <Input label="Alamat Tinggal" value={formData.kuasa_p1_alamat} onChange={e => setFormData({...formData, kuasa_p1_alamat: e.target.value})} />
+                                            </div>
+                                        </div>
+                                        <div className="bg-green-50 dark:bg-green-900/10 p-5 rounded-xl border border-green-200 dark:border-green-900/20">
+                                            <h3 className="font-bold text-green-800 dark:text-green-300 mb-3">Pihak Ke-2 (Penerima Kuasa)</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <Input label="Nama Lengkap Pihak 2" value={formData.kuasa_p2_nama} onChange={e => setFormData({...formData, kuasa_p2_nama: e.target.value})} />
+                                                <Input label="NIK Pihak 2" value={formData.kuasa_p2_nik} onChange={e => setFormData({...formData, kuasa_p2_nik: e.target.value})} />
+                                                <Input label="Pekerjaan" value={formData.kuasa_p2_pekerjaan} onChange={e => setFormData({...formData, kuasa_p2_pekerjaan: e.target.value})} />
+                                                <Input label="Alamat Tinggal" value={formData.kuasa_p2_alamat} onChange={e => setFormData({...formData, kuasa_p2_alamat: e.target.value})} />
+                                            </div>
+                                        </div>
+                                        <div className="p-5 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 rounded-xl">
+                                            <h3 className="font-bold text-yellow-800 dark:text-yellow-300 mb-2">Hal/Keperluan yang Dikuasakan</h3>
+                                            <Textarea label="Isian Pemberian Kuasa" value={formData.kuasa_perihal} onChange={e => setFormData({...formData, kuasa_perihal: e.target.value})} placeholder="Pihak ke-1 menguasakan kepada pihak ke-2 untuk..." rows={3} />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6 animate-fade-in">
+                                        <div className="bg-indigo-50 dark:bg-indigo-900/10 p-4 rounded-lg border border-indigo-200 dark:border-indigo-800/30">
+                                            <Input label="Cari NIK Penduduk (Auto-fill)" value={formData.nik} onChange={handleCariPenduduk} placeholder="Ketik NIK warga..." />
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                            <Input label="Nama Lengkap" value={formData.nama} onChange={e => setFormData({...formData, nama: e.target.value})} />
+                                            <Input label="Tempat, Tanggal Lahir" value={formData.ttl} onChange={e => setFormData({...formData, ttl: e.target.value})} />
+                                            <div>
+                                                <label className="block text-sm font-medium mb-1">Jenis Kelamin</label>
+                                                <select className="w-full p-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 outline-none focus:ring-2 focus:border-transparent text-gray-900 dark:text-white" style={{ '--tw-ring-color': 'var(--theme-color)' }} value={formData.jk} onChange={e => setFormData({...formData, jk: e.target.value})}>
+                                                    <option value="Laki-laki">Laki-laki</option><option value="Perempuan">Perempuan</option>
+                                                </select>
+                                            </div>
+                                            <Input label="Agama" value={formData.agama} onChange={e => setFormData({...formData, agama: e.target.value})} />
+                                            <Input label="Pekerjaan" value={formData.pekerjaan} onChange={e => setFormData({...formData, pekerjaan: e.target.value})} />
+                                            <div className="md:col-span-2"><Textarea label="Alamat Domisili" value={formData.alamat} onChange={e => setFormData({...formData, alamat: e.target.value})} rows={2} /></div>
+                                            
+                                            {/* Render specific Agriculture Fields if selected */}
+                                            {jenis === "Surat Keterangan Usaha Pertanian" ? (
+                                                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 bg-emerald-50 dark:bg-emerald-950/10 p-5 rounded-xl border border-emerald-200">
+                                                    <div className="md:col-span-3 font-bold text-emerald-800 dark:text-emerald-300">Rincian Informasi Lahan Pertanian</div>
+                                                    <Input label="Luas Tanam" value={formData.tani_luas_tanam} onChange={e => setFormData({...formData, tani_luas_tanam: e.target.value})} placeholder="Contoh: 500 m² / 1 Hektar" />
+                                                    <Input label="Luas Tanah" value={formData.tani_luas_tanah} onChange={e => setFormData({...formData, tani_luas_tanah: e.target.value})} placeholder="Contoh: 1200 m²" />
+                                                    <Input label="Luas Garapan" value={formData.tani_luas_garapan} onChange={e => setFormData({...formData, tani_luas_garapan: e.target.value})} placeholder="Contoh: 800 m²" />
+                                                    <div className="md:col-span-2"><Input label="Lokasi Lahan" value={formData.tani_lokasi} onChange={e => setFormData({...formData, tani_lokasi: e.target.value})} placeholder="Contoh: Blok Sawah Lor" /></div>
+                                                    <Input label="Lama Usaha" value={formData.tani_lama_usaha} onChange={e => setFormData({...formData, tani_lama_usaha: e.target.value})} placeholder="Contoh: 5 Tahun" />
+                                                </div>
+                                            ) : (
+                                                <div className="md:col-span-2"><Textarea label="Keperluan" value={formData.keperluan} onChange={e => setFormData({...formData, keperluan: e.target.value})} rows={2} /></div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Permanently added "Keterangan / Catatan Tambahan (Isian Bebas)" to all certificate letters */}
+                                <div className="mt-4 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl border">
+                                    <Textarea 
+                                        label="Keterangan / Catatan Tambahan (Isian Bebas - Tampil Di Bawah Dokumen)" 
+                                        value={formData.keterangan_bebas} 
+                                        onChange={e => setFormData({...formData, keterangan_bebas: e.target.value})} 
+                                        placeholder="Ketik keterangan bebas di sini jika ada lampiran, kondisi khusus, atau pesan administrasi tambahan..." 
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="mt-10 pt-6 border-t border-gray-200 dark:border-gray-700 flex justify-between">
+                                {documentToEdit && <button onClick={() => setDocumentToEdit(null)} className="px-5 py-3 border border-red-500 text-red-500 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 font-bold transition">Batal Edit</button>}
+                                <button onClick={() => setShowPreview(true)} className="ml-auto px-8 py-3 text-white font-bold rounded-xl shadow-lg hover:opacity-90 transition transform hover:scale-105 flex items-center" style={{ backgroundColor: 'var(--theme-color)' }}>
+                                    <Icon name="FileText" size={20} className="mr-2" /> Preview & Cetak
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function PertanahanPanel({ penduduk, setDokumen, files, setFiles, documentToEdit, setDocumentToEdit, showToast }) {
+            const [activeSubTab, setActiveSubTab] = useState('surat');
+            
+            const SUB_JENIS = [
+                "Surat Keterangan Warisan", 
+                "Surat Pernyataan Penguasaan Fisik Bidang Tanah (Sporadik)",
+                "Surat Keterangan Taksiran Harga Tanah dan Bangunan",
+                "Buku Catatan Letter C",
+                "Pengajuan Pembuatan Akta Jual Beli (AJB)",
+                "Akta Hibah"
+            ];
+            const generateNoSurat = () => `470 / ${String(Math.floor(Math.random() * 900) + 100).padStart(3, '0')} / ${new Date().getFullYear()}`;
+            
+            const [jenis, setJenis] = useState(SUB_JENIS[0]);
+            const [pejabat, setPejabat] = useState('KADES');
+            const [showPreview, setShowPreview] = useState(false);
+            
+            // State Waris 
+            const [warisData, setWarisData] = useState({ 
+                almarhum_nama: 'Khaeruddin H', almarhum_alamat: 'Desa Keboledan', almarhum_tgl_meninggal: '29 April 2021', 
+                jml_menikah: '1 (satu)', pasangan_nama: 'Raniah Hj', pasangan_tgl_meninggal: '16 Juni 2022',
+                jml_anak_total: '3 (tiga)', jml_anak_hidup: '2 (dua)', anak_wafat_no: '1 (satu)', anak_wafat_tempat: 'Desa Keboledan', 
+                anak_wafat_tgl: '12-03-2002', anak_wafat_pasangan: 'Imam Sofyan', jml_cucu: '1 (satu)',
+                keperluan_waris: 'Pengurusan Pertanahan / Ahli Waris', camat_nama: 'NURUDDIN Sarjana Hukum', 
+                camat_nip: '19690817 199803 1 017', tgl_surat: '16 Agustus 2023',
+                saksi_1_nama: 'Saksi I: RT/RW', saksi_2_nama: 'Saksi II: Perangkat Desa', saksi_3_nama: 'Saksi III: Sdr. Ahli Waris'
+            });
+            const [anakWaris, setAnakWaris] = useState([
+                { nama: 'Susiyanti', ttl_nik: 'Brebes 08-03-1979  ΝΙΚ. 3329084803790009', status: 'Anak', alamat: 'Desa Keboledan. Rt. 17/02' },
+                { nama: 'Benny Santoso', ttl_nik: 'Brebes 03-12-1980  ΝΙΚ. 3329080312800009', status: 'Anak', alamat: 'Desa Keboledan Rt.31/01' }
+            ]);
+            const [cucuWaris, setCucuWaris] = useState([{ nama: 'Revi Ardiyansyah', ttl_nik: 'Brebes 04-03-2002  ΝΙΚ. 3329080403020001', status: 'Cucu', alamat: 'Desa Keboledan.Rt.31/01' }]);
+
+            // State Sporadik
+            const [sporadikData, setSporadikData] = useState({
+                nama: 'Susiyanti', nik: '3329084803790009', umur: '47', pekerjaan: 'Mengurus Rumah Tangga', alamat: 'Desa Keboledan Rt. 17/02', letak_jalan: 'Jalan Makmur Utama', letak_rt: 'RT 017 RW 002', letak_desa: 'Keboledan', letak_kec: 'Wanasari', letak_kab: 'Brebes',
+                luas_tanah: '350', batas_utara: 'Tanah Milik Sdr. H. Somad', batas_timur: 'Jalan Desa / Lorong', batas_selatan: 'Saluran Irigasi Tersier', batas_barat: 'Pekarangan Sdr. Susanto', tahun_dikuasai: '2010'
+            });
+
+            // State Taksiran
+            const [taksiranData, setTaksiranData] = useState({
+                nomor_surat: generateNoSurat(), nama: 'Benny Santoso', nik: '3329080312800009', alamat: 'Desa Keboledan Rt.31/01',
+                letak_blok: 'Blok Sawah Lor RT 31', luas_tanah: '500', luas_bangunan: '150',
+                harga_tanah: 'Rp. 150.000.000,-', harga_bangunan: 'Rp. 120.000.000,-', total_harga: 'Rp. 270.000.000,-', keperluan: 'Jaminan Bank / Pembiayaan'
+            });
+
+            // State Letter C
+            const [letterCData, setLetterCData] = useState({ nomor_buku: '782', nama_pemilik: 'Khaeruddin H (Alm)', alamat_pemilik: 'Desa Keboledan' });
+            const [persilList, setPersilList] = useState([{ nomor_persil: '12-D.I', kelas: 'D.I', luas: '1500', sebab_tgl_perubahan: 'Warisan tanggal 16 Agustus 2023 kepada Susiyanti & Benny Santoso' }]);
+
+            // State AJB
+            const [ajbData, setAjbData] = useState({
+                nomor_surat: generateNoSurat(), pihak1_nama: 'Benny Santoso', pihak1_nik: '3329080312800009', pihak1_alamat: 'Desa Keboledan Rt.31/01',
+                pihak2_nama: 'NUR FITRIA', pihak2_nik: '3329085206920012', pihak2_alamat: 'RT 001 RW 001',
+                letak_tanah: 'Blok Tengah RT 31', luas_tanah: '250', harga: 'Rp. 85.000.000,-', blok: 'Blok 04', persil: '45-S', kohir: 'C-782'
+            });
+
+            // State Hibah
+            const [hibahData, setHibahData] = useState({
+                nomor_surat: generateNoSurat(), pemberi_nama: 'TARKIMAH', pemberi_nik: '3329084107370064', pemberi_alamat: 'RT 001 RW 001',
+                penerima_nama: 'ABDUL KHOLIK', penerima_nik: '3329082607770006', penerima_alamat: 'RT 000 RW 000', hubungan: 'Anak Kandung',
+                letak_tanah: 'Blok Kidul RT 02', luas_tanah: '320', blok: 'Blok 02', persil: '89-D', kohir: 'C-104'
+            });
+
+            useEffect(() => {
+                if (documentToEdit && documentToEdit.category === 'pertanahan') {
+                    setJenis(documentToEdit.jenis_form); setPejabat(documentToEdit.pejabat);
+                    if (documentToEdit.jenis_form === SUB_JENIS[0]) { setWarisData(documentToEdit.warisData || {}); setAnakWaris(documentToEdit.anakWaris || []); setCucuWaris(documentToEdit.cucuWaris || []); } 
+                    else if (documentToEdit.jenis_form === SUB_JENIS[1]) { setSporadikData(documentToEdit.sporadikData || {}); } 
+                    else if (documentToEdit.jenis_form === SUB_JENIS[2]) { setTaksiranData(documentToEdit.taksiranData || {}); } 
+                    else if (documentToEdit.jenis_form === SUB_JENIS[3]) { setLetterCData(documentToEdit.letterCData || {}); setPersilList(documentToEdit.persilList || []); } 
+                    else if (documentToEdit.jenis_form === SUB_JENIS[4]) { setAjbData(documentToEdit.ajbData || {}); } 
+                    else if (documentToEdit.jenis_form === SUB_JENIS[5]) { setHibahData(documentToEdit.hibahData || {}); }
+                    setShowPreview(true);
+                } else { setShowPreview(false); }
+            }, [documentToEdit]);
+
+            const handleSimpanDokumen = () => {
+                const isEdit = documentToEdit && documentToEdit.id;
+                const documentId = isEdit ? documentToEdit.id : Date.now();
+                const todayStr = new Date().toLocaleDateString('id-ID');
+
+                let nomorSurat = 'No Reg. Desa'; let pemohon = '';
+                if (jenis === SUB_JENIS[0]) { pemohon = warisData.almarhum_nama; } 
+                else if (jenis === SUB_JENIS[1]) { pemohon = sporadikData.nama; } 
+                else if (jenis === SUB_JENIS[2]) { pemohon = taksiranData.nama; nomorSurat = taksiranData.nomor_surat; }
+                else if (jenis === SUB_JENIS[3]) { pemohon = letterCData.nama_pemilik; nomorSurat = `Buku C: ${letterCData.nomor_buku}`; }
+                else if (jenis === SUB_JENIS[4]) { pemohon = ajbData.pihak1_nama + ' & ' + ajbData.pihak2_nama; nomorSurat = ajbData.nomor_surat; }
+                else if (jenis === SUB_JENIS[5]) { pemohon = hibahData.pemberi_nama + ' -> ' + hibahData.penerima_nama; nomorSurat = hibahData.nomor_surat; }
+
+                const newDoc = {
+                    id: documentId, tanggal: todayStr, nomor: nomorSurat, jenis: jenis, pemohon: pemohon, keterangan: '-',
+                    jenis_form: jenis, pejabat: pejabat, category: 'pertanahan',
+                    warisData, anakWaris, cucuWaris, sporadikData, taksiranData, letterCData, persilList, ajbData, hibahData
+                };
+
+                if (isEdit) { 
+                    setDokumen(prev => prev.map(d => d.id === documentToEdit.id ? newDoc : d)); 
+                    showToast("Arsip diperbarui!"); 
+                } else { 
+                    setDokumen(prev => [newDoc, ...prev]); 
+                    showToast("Dokumen Pertanahan disimpan!"); 
+                }
+            };
+
+            const renderPrintableSurat = () => {
+                const today = warisData.tgl_surat || new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+                
+                if (jenis === SUB_JENIS[0]) {
+                    return (
+                        <div className="text-sm leading-relaxed text-black font-sans p-1">
+                            <div className="text-center mb-6"><h3 className="text-lg font-bold uppercase underline leading-tight tracking-wide">SURAT KETERANGAN WARISAN</h3></div>
+                            <div className="text-justify leading-relaxed mb-6 text-sm">
+                                <p className="indent-8 mb-2">Kami yang bertanda tangan dibawah ini para ahli waris dari almarhum <strong>{warisData.almarhum_nama || '................................'}</strong> menerangkan dengan sesungguhnya bahwa kami bertanggung jawab penuh atas akibat hukum dengan penandatanganan surat keterangan waris ini dan sanggup diangkat sumpah bahwa, <strong>{warisData.almarhum_nama || '................................'}</strong> tempat tinggal yang terakhir di Desa Keboledan, yang telah meninggal dunia pada tanggal {warisData.almarhum_tgl_meninggal || '................................'}.</p>
+                                <p className="indent-8 mb-2">Semasa hidupnya Almarhum <strong>{warisData.almarhum_nama || '................................'}</strong> Menikah {warisData.jml_menikah} kali, dari pernikahan Almarhum {warisData.almarhum_nama} dengan <strong>{warisData.pasangan_nama || '................................'}</strong>, meninggal pada tanggal {warisData.pasangan_tgl_meninggal || '................................'}, dilahirkan {warisData.jml_anak_total} Orang anak, kami masih hidup {warisData.jml_anak_hidup} Orang Anak yaitu:</p>
+                                
+                                <table className="w-full border-collapse border border-black my-3 text-xs">
+                                    <thead><tr><th className="border border-black p-1.5 w-8 text-center">No</th><th className="border border-black p-1.5 text-center">Nama</th><th className="border border-black p-1.5 text-center">Tempat/Tgl Lahir / NIK</th><th className="border border-black p-1.5 text-center">Status</th><th className="border border-black p-1.5 text-center">Alamat</th></tr></thead>
+                                    <tbody>{anakWaris.map((w, i) => (<tr key={i}><td className="border border-black p-1 text-center">{i + 1}</td><td className="border border-black p-1 font-semibold uppercase">{w.nama}</td><td className="border border-black p-1">{w.ttl_nik}</td><td className="border border-black p-1 text-center">{w.status}</td><td className="border border-black p-1">{w.alamat}</td></tr>))}</tbody>
+                                </table>
+                                
+                                <p className="indent-8 mb-2">Bahwa anak tersebut diatas yang masih hidup {warisData.jml_anak_hidup} orang,</p>
+                                <p className="indent-8 mb-2">Bahwa anak tersebut angka: {warisData.anak_wafat_no} telah meninggal dunia di Desa Keboledan pada tanggal {warisData.anak_wafat_tgl} dan ketika hidupnya kawin dengan: {warisData.anak_wafat_pasangan} dari perkawinan tersebut telah dilahirkan {warisData.jml_cucu} orang anak yaitu:</p>
+                                
+                                <table className="w-full border-collapse border border-black my-3 text-xs">
+                                    <thead><tr><th className="border border-black p-1.5 w-8 text-center">No</th><th className="border border-black p-1.5 text-center">Nama</th><th className="border border-black p-1.5 text-center">Tempat/Tgl Lahir / NIK</th><th className="border border-black p-1.5 text-center">Status</th><th className="border border-black p-1.5 text-center">Alamat</th></tr></thead>
+                                    <tbody>{cucuWaris.map((w, i) => (<tr key={i}><td className="border border-black p-1 text-center">{i + 1}</td><td className="border border-black p-1 font-semibold uppercase">{w.nama}</td><td className="border border-black p-1">{w.ttl_nik}</td><td className="border border-black p-1 text-center">{w.status}</td><td className="border border-black p-1">{w.alamat}</td></tr>))}</tbody>
+                                </table>
+
+                                <p className="indent-8 mb-2">Demikian nama-nama ke-{warisData.jml_anak_total} Orang Anak dan ke-{warisData.jml_cucu} Orang Cucu, adalah ahli waris yang sah dari Almarhum {warisData.almarhum_nama}.</p>
+                                <p className="indent-8 mb-2">Surat Keterangan Waris ini dipergunakan untuk keperluan: <strong>{warisData.keperluan_waris || '................................................................'}</strong></p>
+                                <p className="indent-8 mb-6">Demikian Surat Keterangan ini kami buat, apabila ada hal-hal yang bertentangan/berlainan dengan kenyataan dikemudian hari, maka kami akan menyelesaikan sesuai hukum yang berlaku, serta tidak melibatkan Kepala Desa, Camat maupun saksi-saksi yang ikut menandatangani Surat Keterangan waris ini.</p>
+
+                                <div className="mt-8 break-inside-avoid">
+                                    <div className="flex justify-end mb-2"><div className="text-center w-64"><p>Keboledan, {today}</p><p>Para ahli waris dari Almarhum {warisData.almarhum_nama}</p></div></div>
+                                    <div className="flex justify-between items-start mt-4 mb-8">
+                                        <div className="w-1/2">
+                                            <ol className="list-decimal pl-6 space-y-4 text-xs">
+                                                <li>{warisData.saksi_1_nama || 'Saksi I: RT/RW'}<br/><span className="inline-block mt-4 border-b border-black w-40"></span></li>
+                                                <li>{warisData.saksi_2_nama || 'Saksi II: Perangkat Desa'}<br/><span className="inline-block mt-4 border-b border-black w-40"></span></li>
+                                                <li>{warisData.saksi_3_nama || 'Saksi III: Sdr. Ahli Waris'}<br/><span className="inline-block mt-4 border-b border-black w-40"></span></li>
+                                            </ol>
+                                        </div>
+                                        <div className="w-1/2">
+                                            <ol className="list-decimal pl-6 space-y-4 text-xs font-semibold">
+                                                {[...anakWaris, ...cucuWaris].map((w, i) => (
+                                                    <li key={i} className="flex justify-between w-full pr-8"><span>{w.nama}</span> <span className="border-b border-dashed border-black w-32 inline-block"></span></li>
+                                                ))}
+                                            </ol>
+                                        </div>
+                                    </div>
+
+                                    <div className="text-center font-bold text-sm my-4">MENGETAHUI :</div>
+                                    <div className="grid grid-cols-2 gap-8 text-center text-xs mt-4">
+                                        <div>
+                                            <p className="mb-1">Dicatat pada buku register kami</p><p className="mb-1">Atas permohonan yang bersangkutan</p><p className="mb-1">Nomor:</p><p className="mb-16">Tanggal:</p>
+                                            <p className="mb-1">Camat Wanasari</p>
+                                            <p className="font-bold underline uppercase text-sm">{warisData.camat_nama || '................................'}</p>
+                                            <p className="font-semibold">NIP. {warisData.camat_nip || '................................'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="mb-1">Dicatat pada buku register kami</p><p className="mb-1">Atas permohonan yang bersangkutan</p><p className="mb-1">Nomor:</p><p className="mb-16">Tanggal:</p>
+                                            <p className="mb-1">Lurah/Kepala Desa Keboledan</p>
+                                            <p className="font-bold underline uppercase text-sm">S A I R U N</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                } else if (jenis === SUB_JENIS[1]) {
+                    // SPORADIK
+                    return (
+                        <div className="text-base text-black font-sans">
+                            <div className="text-center mb-8 mt-4"><h3 className="text-xl font-bold uppercase underline leading-tight tracking-wide">SURAT PERNYATAAN PENGUASAAN FISIK BIDANG TANAH (SPORADIK)</h3></div>
+                            <div className="text-justify leading-relaxed mb-8">
+                                <p className="mb-4">Yang bertanda tangan di bawah ini:</p>
+                                <table className="w-full mb-6 ml-8 text-sm"><tbody>
+                                    <tr><td className="w-48 py-1">Nama Lengkap</td><td className="w-4">:</td><td className="font-bold uppercase">{sporadikData.nama || '......................................'}</td></tr>
+                                    <tr><td className="py-1">Umur</td><td>:</td><td>{sporadikData.umur || '......................................'} Tahun</td></tr>
+                                    <tr><td className="py-1">Pekerjaan</td><td>:</td><td>{sporadikData.pekerjaan || '......................................'}</td></tr>
+                                    <tr><td className="py-1">Nomor KTP / NIK</td><td>:</td><td>{sporadikData.nik || '......................................'}</td></tr>
+                                    <tr><td className="py-1 align-top">Alamat</td><td className="align-top">:</td><td>{sporadikData.alamat || '......................................'}</td></tr>
+                                </tbody></table>
+                                <p className="mb-4 indent-8">Dengan ini menyatakan bahwa saya dengan itikad baik telah menguasai sebidang tanah yang terletak di:</p>
+                                <table className="w-full mb-6 ml-8 text-sm"><tbody>
+                                    <tr><td className="w-48 py-1">Jalan / Blok</td><td className="w-4">:</td><td>{sporadikData.letak_jalan || '......................................'}</td></tr>
+                                    <tr><td className="py-1">RT / RW</td><td>:</td><td>{sporadikData.letak_rt || '......................................'}</td></tr>
+                                    <tr><td className="py-1">Desa / Kelurahan</td><td>:</td><td>{sporadikData.letak_desa}</td></tr>
+                                    <tr><td className="py-1">Kecamatan</td><td>:</td><td>{sporadikData.letak_kec}</td></tr>
+                                    <tr><td className="py-1 font-bold">Luas Tanah</td><td>:</td><td className="font-bold">± {sporadikData.luas_tanah || '............'} m²</td></tr>
+                                </tbody></table>
+                                <p className="mb-2">Dengan batas-batas bidang tanah sebagai berikut:</p>
+                                <ul className="list-disc ml-14 mb-4 text-sm">
+                                    <li>Utara : {sporadikData.batas_utara || '...................................................'}</li>
+                                    <li>Timur : {sporadikData.batas_timur || '...................................................'}</li>
+                                    <li>Selatan : {sporadikData.batas_selatan || '...................................................'}</li>
+                                    <li>Barat : {sporadikData.batas_barat || '...................................................'}</li>
+                                </ul>
+                                <p className="indent-8 mb-4">Bidang tanah tersebut telah saya kuasai secara terus menerus sejak tahun <strong>{sporadikData.tahun_dikuasai || '..........'}</strong> sampai saat ini dan tidak pernah menjadi sengketa dengan pihak manapun.</p>
+                                <p className="indent-8">Demikian surat pernyataan ini saya buat dengan sebenarnya dan penuh tanggung jawab hukum.</p>
+                                
+                                <div className="mt-12 flex justify-between items-start break-inside-avoid">
+                                    <div className="text-center w-64"><p className="mb-24">Mengetahui,<br/>Kepala Desa Keboledan</p><p className="font-bold underline uppercase">S A I R U N</p></div>
+                                    <div className="text-center w-64"><p>Keboledan, {today}</p><p className="mb-24">Yang Membuat Pernyataan</p><p className="font-bold underline uppercase">{sporadikData.nama || '..........................'}</p></div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                } else if (jenis === SUB_JENIS[2]) {
+                    // TAKSIRAN
+                    return (
+                        <div className="text-base text-black font-sans">
+                            <KopSurat />
+                            <div className="text-center mb-8 mt-6">
+                                <h3 className="text-xl font-bold uppercase underline leading-tight tracking-wide">SURAT KETERANGAN TAKSIRAN HARGA TANAH & BANGUNAN</h3>
+                                <p className="text-md mt-1 font-semibold">Nomor : {taksiranData.nomor_surat}</p>
+                            </div>
+                            <div className="text-justify leading-relaxed mb-8">
+                                <p className="mb-6 indent-8">Yang bertanda tangan di bawah ini Kepala Desa Keboledan, Kecamatan Wanasari, Kabupaten Brebes, menerangkan dengan sebenarnya bahwa:</p>
+                                <table className="w-full mb-6 ml-8 text-sm"><tbody>
+                                    <tr><td className="w-48 py-1">Nama Lengkap</td><td className="w-4">:</td><td className="font-bold uppercase">{taksiranData.nama || '......................................'}</td></tr>
+                                    <tr><td className="py-1">NIK</td><td>:</td><td>{taksiranData.nik || '......................................'}</td></tr>
+                                    <tr><td className="py-1 align-top">Alamat</td><td className="align-top">:</td><td>{taksiranData.alamat || '......................................'}</td></tr>
+                                </tbody></table>
+                                <p className="indent-8 mb-4">Adalah benar yang bersangkutan memiliki sebidang tanah and/atau bangunan yang terletak di wilayah Desa Keboledan, dengan rincian sebagai berikut:</p>
+                                <table className="w-full mb-6 ml-8 text-sm"><tbody>
+                                    <tr><td className="w-48 py-1">Letak / Blok Tanah</td><td className="w-4">:</td><td>{taksiranData.letak_blok || '......................................'}</td></tr>
+                                    <tr><td className="py-1">Luas Tanah</td><td>:</td><td>± {taksiranData.luas_tanah || '............'} m²</td></tr>
+                                    <tr><td className="py-1">Luas Bangunan</td><td>:</td><td>± {taksiranData.luas_bangunan || '............'} m²</td></tr>
+                                    <tr><td className="py-1 mt-2 pt-2 border-t font-semibold">Taksiran Harga Tanah</td><td className="mt-2 pt-2 border-t">:</td><td className="mt-2 pt-2 border-t">{taksiranData.harga_tanah || 'Rp. ..............................'}</td></tr>
+                                    <tr><td className="py-1 font-semibold">Taksiran Harga Bangunan</td><td>:</td><td>{taksiranData.harga_bangunan || 'Rp. ..............................'}</td></tr>
+                                    <tr><td className="py-2 font-bold text-lg">Total Taksiran Harga</td><td className="py-2 font-bold text-lg">:</td><td className="py-2 font-bold text-lg">{taksiranData.total_harga || 'Rp. ..............................'}</td></tr>
+                                </tbody></table>
+                                <p className="indent-8 mb-4">Harga taksiran tersebut di atas merupakan estimasi harga pasar wajar yang berlaku saat ini di wilayah Desa Keboledan. Surat keterangan ini diberikan untuk keperluan: <strong>{taksiranData.keperluan || '......................................'}</strong>.</p>
+                                <p className="indent-8">Demikian surat keterangan taksiran harga ini dibuat agar dapat dipergunakan sebagaimana mestinya.</p>
+                                <TandaTangan today={today} pejabat="KADES" />
+                            </div>
+                        </div>
+                    );
+                } else if (jenis === SUB_JENIS[3]) {
+                    // LETTER C
+                    return (
+                        <div className="landscape-print text-black font-sans" style={{ width: '100%' }}>
+                            <div className="text-center mb-8 border-b-4 border-double border-black pb-4">
+                                <h2 className="text-2xl font-bold uppercase tracking-widest">Buku Huruf C Desa</h2>
+                                <h3 className="text-lg font-semibold">Desa Keboledan, Kecamatan Wanasari</h3>
+                            </div>
+                            <div className="flex justify-between mb-6 text-base font-bold">
+                                <div><p>Nomor Buku C : {letterCData.nomor_buku || '..........'}</p></div>
+                                <div className="text-right"><p>Nama Pemilik : {letterCData.nama_pemilik || '..............................'}</p><p className="text-sm font-normal">Alamat : {letterCData.alamat_pemilik || '..............................'}</p></div>
+                            </div>
+                            <table className="w-full border-collapse border-2 border-black text-sm mt-4">
+                                <thead><tr className="bg-gray-100 print:bg-transparent"><th className="border border-black p-3 text-center w-16">No</th><th className="border border-black p-3 text-center w-32">Nomor Persil</th><th className="border border-black p-3 text-center w-32">Kelas Desa</th><th className="border border-black p-3 text-center w-32">Luas (m²)</th><th className="border border-black p-3 text-center">Sebab & Tanggal Perubahan / Mutasi</th></tr></thead>
+                                <tbody>
+                                {persilList.map((p, i) => (
+                                    <tr key={i} className="h-16 align-top"><td className="border border-black p-3 text-center">{i + 1}</td><td className="border border-black p-3 font-bold text-center">{p.nomor_persil}</td><td className="border border-black p-3 text-center">{p.kelas}</td><td className="border border-black p-3 text-center">{p.luas}</td><td className="border border-black p-3 whitespace-pre-line">{p.sebab_tgl_perubahan}</td></tr>
+                                ))}
+                                {[1,2,3].map(x => (<tr key={`empty-${x}`} className="h-16"><td className="border border-black"></td><td className="border border-black"></td><td className="border border-black"></td><td className="border border-black"></td><td className="border border-black"></td></tr>))}
+                                </tbody>
+                            </table>
+                        </div>
+                    );
+                } else if (jenis === SUB_JENIS[4] || jenis === SUB_JENIS[5]) {
+                    // AJB ATAU HIBAH
+                    const title = jenis === SUB_JENIS[4] ? "SURAT PENGANTAR PEMBUATAN AKTA JUAL BELI (AJB)" : "SURAT PENGANTAR PEMBUATAN AKTA HIBAH";
+                    const data = jenis === SUB_JENIS[4] ? ajbData : hibahData;
+                    const p1_label = jenis === SUB_JENIS[4] ? "Pihak Pertama (Penjual)" : "Pihak Pertama (Pemberi Hibah)";
+                    const p2_label = jenis === SUB_JENIS[4] ? "Pihak Kedua (Pembeli)" : "Pihak Kedua (Penerima Hibah)";
+                    return (
+                        <div className="text-base text-black font-sans">
+                            <KopSurat />
+                            <div className="text-center mb-8 mt-6">
+                                <h3 className="text-xl font-bold uppercase underline leading-tight tracking-wide">{title}</h3>
+                                <p className="text-md mt-1 font-semibold">Nomor : {data.nomor_surat}</p>
+                            </div>
+                            <div className="text-justify leading-relaxed mb-8">
+                                <p className="mb-4 indent-8">Yang bertanda tangan di bawah ini Kepala Desa Keboledan, menerangkan bahwa akan dilakukan proses {jenis === SUB_JENIS[4] ? 'Jual Beli' : 'Hibah'} atas sebidang tanah antara pihak-pihak sebagai berikut:</p>
+                                <p className="font-bold ml-8 mb-2 underline">{p1_label}:</p>
+                                <table className="w-full mb-4 ml-12 text-sm"><tbody>
+                                    <tr><td className="w-40 py-1">Nama Lengkap</td><td className="w-4">:</td><td className="uppercase font-semibold">{data.pihak1_nama || data.pemberi_nama || '......................................'}</td></tr>
+                                    <tr><td className="py-1">NIK</td><td>:</td><td>{data.pihak1_nik || data.pemberi_nik || '......................................'}</td></tr>
+                                    <tr><td className="py-1 align-top">Alamat</td><td className="align-top">:</td><td>{data.pihak1_alamat || data.pemberi_alamat || '......................................'}</td></tr>
+                                </tbody></table>
+                                <p className="font-bold ml-8 mb-2 underline">{p2_label}:</p>
+                                <table className="w-full mb-6 ml-12 text-sm"><tbody>
+                                    <tr><td className="w-40 py-1">Nama Lengkap</td><td className="w-4">:</td><td className="uppercase font-semibold">{data.pihak2_nama || data.penerima_nama || '......................................'}</td></tr>
+                                    <tr><td className="py-1">NIK</td><td>:</td><td>{data.pihak2_nik || data.penerima_nik || '......................................'}</td></tr>
+                                    <tr><td className="py-1 align-top">Alamat</td><td className="align-top">:</td><td>{data.pihak2_alamat || data.penerima_alamat || '......................................'}</td></tr>
+                                </tbody></table>
+                                <p className="indent-8 mb-2">Terhadap sebidang tanah yang terletak di Desa Keboledan dengan rincian:</p>
+                                <table className="w-full mb-6 ml-12 text-sm"><tbody>
+                                    <tr><td className="w-40 py-1">Letak / Blok</td><td className="w-4">:</td><td>{data.letak_tanah || '......................................'}</td></tr>
+                                    <tr><td className="py-1">Persil / Kohir</td><td>:</td><td>Persil: {data.persil || '......'} / Kohir: {data.kohir || '......'}</td></tr>
+                                    <tr><td className="py-1">Luas Tanah</td><td>:</td><td>± {data.luas_tanah || '............'} m²</td></tr>
+                                    {jenis === SUB_JENIS[4] && <tr><td className="py-1">Harga Kesepakatan</td><td>:</td><td className="font-bold">{data.harga || 'Rp. ..............................'}</td></tr>}
+                                    {jenis === SUB_JENIS[5] && <tr><td className="py-1">Hubungan Keluarga</td><td>:</td><td>{data.hubungan || '......................................'}</td></tr>}
+                                </tbody></table>
+                                <p className="indent-8 mb-4">Bahwa tanah tersebut benar berstatus bebas sengketa. Surat Pengantar ini dibuat sebagai kelengkapan administrasi untuk pengajuan Pembuatan {jenis === SUB_JENIS[4] ? 'Akta Jual Beli (AJB)' : 'Akta Hibah'} kepada PPAT / Pejabat Pembuat Akta Tanah yang berwenang.</p>
+                                <div className="mt-12 break-inside-avoid"><TandaTangan today={today} pejabat="KADES" /></div>
+                            </div>
+                        </div>
+                    );
+                }
+            };
+
+            if (showPreview) {
+                return (
+                    <div className="bg-gray-100 dark:bg-gray-800 p-4 md:p-8 rounded-xl print:bg-white print:p-0 min-h-full relative overflow-auto animate-fade-in text-black">
+                        <div className="mb-6 flex flex-wrap gap-4 justify-between items-center print-hide bg-white dark:bg-gray-700 p-4 rounded-lg shadow border border-gray-200 dark:border-gray-600">
+                            <button onClick={() => { setDocumentToEdit(null); setShowPreview(false); }} className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition flex items-center">
+                                <Icon name="X" size={16} className="mr-2"/> Kembali
+                            </button>
+                            <div className="flex gap-3">
+                                <button onClick={handleSimpanDokumen} className="px-4 py-2 bg-indigo-600 text-white rounded-lg transition shadow flex items-center hover:bg-indigo-700">
+                                    <Icon name="Save" size={16} className="mr-2"/> {documentToEdit ? 'Update Arsip' : 'Arsipkan'}
+                                </button>
+                                <button onClick={() => window.print()} className="px-4 py-2 text-white rounded-lg transition shadow-lg flex items-center hover:opacity-90 transform hover:scale-105" style={{backgroundColor: 'var(--theme-color)'}}>
+                                    <Icon name="Printer" size={16} className="mr-2"/> Cetak / PDF
+                                </button>
+                            </div>
+                        </div>
+                        <div id="printable-area" className={`bg-white text-black p-10 mx-auto shadow-2xl min-h-[297mm] print:shadow-none print:p-0 font-sans ${jenis === SUB_JENIS[3] ? 'max-w-6xl' : 'max-w-4xl'}`} style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
+                            {renderPrintableSurat()}
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="bg-white dark:bg-gray-800 p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 font-sans animate-fade-in text-gray-950 dark:text-white">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b pb-4 mb-6 dark:border-gray-700 gap-4">
+                        <h2 className="text-2xl font-bold flex items-center">
+                            <Icon name="Map" size={24} className="mr-3 text-[var(--theme-color)]" /> MENU PERTANAHAN & PEMERINTAHAN
+                        </h2>
+                        <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
+                            <button onClick={() => setActiveSubTab('surat')} className={`px-4 py-2 text-sm font-bold rounded-md transition ${activeSubTab === 'surat' ? 'bg-white dark:bg-gray-800 shadow text-[var(--theme-color)]' : 'text-gray-500 hover:text-gray-700'}`}>Form Layanan</button>
+                            <button onClick={() => setActiveSubTab('arsip')} className={`px-4 py-2 text-sm font-bold rounded-md transition ${activeSubTab === 'arsip' ? 'bg-white dark:bg-gray-800 shadow text-[var(--theme-color)]' : 'text-gray-500 hover:text-gray-700'}`}>Arsip Scan</button>
+                        </div>
+                    </div>
+
+                    {activeSubTab === 'arsip' ? (
+                        <UploadSection category="pertanahan" files={files} setFiles={setFiles} showToast={showToast} />
+                    ) : (
+                        <>
+                            <div className="mb-8 bg-gray-50 dark:bg-gray-700/30 p-4 rounded-xl border border-gray-100 dark:border-gray-600">
+                                <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">Pilih Layanan / Dokumen Pertanahan</label>
+                                <select className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 font-semibold text-[var(--theme-color)] focus:ring-2 outline-none text-lg transition shadow-sm" value={jenis} onChange={(e) => setJenis(e.target.value)}>
+                                    {SUB_JENIS.map(j => <option key={j} value={j}>{j}</option>)}
+                                </select>
+                            </div>
+
+                            <div className="space-y-6">
+                                {jenis === SUB_JENIS[0] && (
+                                    <div className="space-y-6 animate-fade-in">
+                                        <div className="bg-orange-50 dark:bg-orange-900/10 p-6 rounded-xl border border-orange-200 dark:border-orange-900/30">
+                                            <h3 className="font-bold text-orange-800 dark:text-orange-300 mb-4">Informasi Almarhum & Pasangan</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <Input label="Nama Almarhum" value={warisData.almarhum_nama} onChange={e => setWarisData({...warisData, almarhum_nama: e.target.value})} />
+                                                <Input label="Tgl Meninggal Almarhum" value={warisData.almarhum_tgl_meninggal} onChange={e => setWarisData({...warisData, almarhum_tgl_meninggal: e.target.value})} />
+                                                <Input label="Alamat Terakhir" value={warisData.almarhum_alamat} onChange={e => setWarisData({...warisData, almarhum_alamat: e.target.value})} />
+                                                
+                                                <Input label="Menikah Berapa Kali?" value={warisData.jml_menikah} onChange={e => setWarisData({...warisData, jml_menikah: e.target.value})} placeholder="Contoh: 1 (satu)" />
+                                                <Input label="Nama Pasangan (Suami/Istri)" value={warisData.pasangan_nama} onChange={e => setWarisData({...warisData, pasangan_nama: e.target.value})} />
+                                                <Input label="Tgl Meninggal Pasangan" value={warisData.pasangan_tgl_meninggal} onChange={e => setWarisData({...warisData, pasangan_tgl_meninggal: e.target.value})} />
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-orange-50 dark:bg-orange-900/10 p-6 rounded-xl border border-orange-200 dark:border-orange-900/30">
+                                            <h3 className="font-bold text-orange-800 dark:text-orange-300 mb-4">Keterangan Anak (Ahli Waris Pengganti)</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <Input label="Jumlah Total Anak" value={warisData.jml_anak_total} onChange={e => setWarisData({...warisData, jml_anak_total: e.target.value})} placeholder="Contoh: 3 (tiga)" />
+                                                <Input label="Jumlah Anak Masih Hidup" value={warisData.jml_anak_hidup} onChange={e => setWarisData({...warisData, jml_anak_hidup: e.target.value})} placeholder="Contoh: 2 (dua)" />
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 bg-white/50 dark:bg-gray-800/50 p-4 rounded border border-orange-100 dark:border-gray-600 font-sans">
+                                                <Input label="Anak ke berapa yang Wafat?" value={warisData.anak_wafat_no} onChange={e => setWarisData({...warisData, anak_wafat_no: e.target.value})} placeholder="Contoh: 1 (satu)" />
+                                                <Input label="Tempat Wafat" value={warisData.anak_wafat_tempat} onChange={e => setWarisData({...warisData, anak_wafat_tempat: e.target.value})} />
+                                                <Input label="Tanggal Wafat Anak" value={warisData.anak_wafat_tgl} onChange={e => setWarisData({...warisData, anak_wafat_tgl: e.target.value})} />
+                                                <Input label="Nama Pasangan Anak (Menantu)" value={warisData.anak_wafat_pasangan} onChange={e => setWarisData({...warisData, anak_wafat_pasangan: e.target.value})} />
+                                                <div className="md:col-span-2"><Input label="Jumlah Cucu (dari anak yg wafat)" value={warisData.jml_cucu} onChange={e => setWarisData({...warisData, jml_cucu: e.target.value})} placeholder="Contoh: 1 (satu)" /></div>
+                                            </div>
+                                        </div>
+
+                                        <DynamicTable title="Tabel Ahli Waris (Anak Yang Masih Hidup)" colorTheme="blue" data={anakWaris} setData={setAnakWaris} defaultObj={{nama: '', ttl_nik: '', status: 'Anak', alamat: ''}} />
+                                        <DynamicTable title="Tabel Ahli Waris Pengganti (Cucu)" colorTheme="teal" data={cucuWaris} setData={setCucuWaris} defaultObj={{nama: '', ttl_nik: '', status: 'Cucu', alamat: ''}} />
+                                        
+                                        <div className="bg-gray-100 dark:bg-gray-700/30 p-6 rounded-xl border border-gray-200 dark:border-gray-600">
+                                            <h3 className="font-bold mb-4">Administrasi & Penandatangan</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 font-sans">
+                                                <Input label="Nama Saksi 1" value={warisData.saksi_1_nama} onChange={e => setWarisData({...warisData, saksi_1_nama: e.target.value})} />
+                                                <Input label="Nama Saksi 2" value={warisData.saksi_2_nama} onChange={e => setWarisData({...warisData, saksi_2_nama: e.target.value})} />
+                                                <Input label="Nama Saksi 3" value={warisData.saksi_3_nama} onChange={e => setWarisData({...warisData, saksi_3_nama: e.target.value})} />
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-sans">
+                                                <Input label="Nama Camat" value={warisData.camat_nama} onChange={e => setWarisData({...warisData, camat_nama: e.target.value})} />
+                                                <Input label="NIP Camat" value={warisData.camat_nip} onChange={e => setWarisData({...warisData, camat_nip: e.target.value})} />
+                                                <Input label="Tanggal Surat" value={warisData.tgl_surat} onChange={e => setWarisData({...warisData, tgl_surat: e.target.value})} />
+                                                <Input label="Keperluan Surat" value={warisData.keperluan_waris} onChange={e => setWarisData({...warisData, keperluan_waris: e.target.value})} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {jenis === SUB_JENIS[1] && (
+                                    <div className="space-y-6 animate-fade-in font-sans">
+                                        <div className="bg-green-50 dark:bg-green-900/10 p-6 rounded-xl border border-green-200 dark:border-green-900/30">
+                                            <h3 className="font-bold text-green-800 dark:text-green-300 mb-4">Data Pemohon Sporadik</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <Input label="Nama Pemohon" value={sporadikData.nama} onChange={e => setSporadikData({...sporadikData, nama: e.target.value})} />
+                                                <Input label="NIK" value={sporadikData.nik} onChange={e => setSporadikData({...sporadikData, nik: e.target.value})} />
+                                                <Input label="Umur" value={sporadikData.umur} onChange={e => setSporadikData({...sporadikData, umur: e.target.value})} />
+                                                <Input label="Pekerjaan" value={sporadikData.pekerjaan} onChange={e => setSporadikData({...sporadikData, pekerjaan: e.target.value})} />
+                                                <div className="md:col-span-2"><Input label="Alamat Pemohon" value={sporadikData.alamat} onChange={e => setSporadikData({...sporadikData, alamat: e.target.value})} /></div>
+                                            </div>
+                                        </div>
+                                        <div className="bg-yellow-50 dark:bg-yellow-900/10 p-6 rounded-xl border border-yellow-200 dark:border-yellow-900/30">
+                                            <h3 className="font-bold text-yellow-800 dark:text-yellow-300 mb-4">Letak dan Ukuran Tanah</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="md:col-span-2"><Input label="Jalan / Blok Letak Tanah" value={sporadikData.letak_jalan} onChange={e => setSporadikData({...sporadikData, letak_jalan: e.target.value})} /></div>
+                                                <Input label="RT / RW" value={sporadikData.letak_rt} onChange={e => setSporadikData({...sporadikData, letak_rt: e.target.value})} />
+                                                <Input label="Luas Tanah (m²)" value={sporadikData.luas_tanah} onChange={e => setSporadikData({...sporadikData, luas_tanah: e.target.value})} type="number" />
+                                                <Input label="Dikuasai Sejak Tahun" value={sporadikData.tahun_dikuasai} onChange={e => setSporadikData({...sporadikData, tahun_dikuasai: e.target.value})} />
+                                                <Input label="Batas Utara" value={sporadikData.batas_utara} onChange={e => setSporadikData({...sporadikData, batas_utara: e.target.value})} />
+                                                <Input label="Batas Timur" value={sporadikData.batas_timur} onChange={e => setSporadikData({...sporadikData, batas_timur: e.target.value})} />
+                                                <Input label="Batas Selatan" value={sporadikData.batas_selatan} onChange={e => setSporadikData({...sporadikData, batas_selatan: e.target.value})} />
+                                                <Input label="Batas Barat" value={sporadikData.batas_barat} onChange={e => setSporadikData({...sporadikData, batas_barat: e.target.value})} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {jenis === SUB_JENIS[2] && (
+                                    <div className="space-y-6 animate-fade-in font-sans">
+                                        <div className="bg-blue-50 dark:bg-blue-900/10 p-6 rounded-xl border border-blue-200 dark:border-blue-900/30">
+                                            <h3 className="font-bold text-blue-800 dark:text-blue-300 mb-4">Data Pemilik & Surat</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <Input label="Nomor Surat" value={taksiranData.nomor_surat} onChange={e => setTaksiranData({...taksiranData, nomor_surat: e.target.value})} />
+                                                <Input label="Nama Pemilik" value={taksiranData.nama} onChange={e => setTaksiranData({...taksiranData, nama: e.target.value})} />
+                                                <Input label="NIK" value={taksiranData.nik} onChange={e => setTaksiranData({...taksiranData, nik: e.target.value})} />
+                                                <Input label="Keperluan" value={taksiranData.keperluan} onChange={e => setTaksiranData({...taksiranData, keperluan: e.target.value})} />
+                                                <div className="md:col-span-2"><Input label="Alamat Pemilik" value={taksiranData.alamat} onChange={e => setTaksiranData({...taksiranData, alamat: e.target.value})} /></div>
+                                            </div>
+                                        </div>
+                                        <div className="bg-indigo-50 dark:bg-indigo-900/10 p-6 rounded-xl border border-indigo-200 dark:border-indigo-900/30 font-sans">
+                                            <h3 className="font-bold text-indigo-800 dark:text-indigo-300 mb-4">Rincian Taksiran</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="md:col-span-2"><Input label="Letak / Blok Tanah" value={taksiranData.letak_blok} onChange={e => setTaksiranData({...taksiranData, letak_blok: e.target.value})} /></div>
+                                                <Input label="Luas Tanah (m²)" value={taksiranData.luas_tanah} onChange={e => setTaksiranData({...taksiranData, luas_tanah: e.target.value})} />
+                                                <Input label="Luas Bangunan (m²)" value={taksiranData.luas_bangunan} onChange={e => setTaksiranData({...taksiranData, luas_bangunan: e.target.value})} />
+                                                <Input label="Taksiran Harga Tanah (Teks format rupiah)" value={taksiranData.harga_tanah} onChange={e => setTaksiranData({...taksiranData, harga_tanah: e.target.value})} placeholder="Contoh: Rp. 100.000.000,-" />
+                                                <Input label="Taksiran Harga Bangunan" value={taksiranData.harga_bangunan} onChange={e => setTaksiranData({...taksiranData, harga_bangunan: e.target.value})} placeholder="Contoh: Rp. 50.000.000,-" />
+                                                <div className="md:col-span-2"><Input label="Total Taksiran" value={taksiranData.total_harga} onChange={e => setTaksiranData({...taksiranData, total_harga: e.target.value})} placeholder="Contoh: Rp. 150.000.000,-" font="font-bold text-lg" /></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {jenis === SUB_JENIS[3] && (
+                                    <div className="space-y-6 animate-fade-in font-sans">
+                                        <div className="bg-purple-50 dark:bg-purple-900/10 p-6 rounded-xl border border-purple-200 dark:border-purple-900/30">
+                                            <h3 className="font-bold text-purple-800 dark:text-purple-300 mb-4">Data Induk Letter C</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <Input label="Nomor Buku C" value={letterCData.nomor_buku} onChange={e => setLetterCData({...letterCData, nomor_buku: e.target.value})} font="font-mono font-bold text-lg" />
+                                                <Input label="Nama Pemilik Awal" value={letterCData.nama_pemilik} onChange={e => setLetterCData({...letterCData, nama_pemilik: e.target.value})} />
+                                                <Input label="Alamat Pemilik" value={letterCData.alamat_pemilik} onChange={e => setLetterCData({...letterCData, alamat_pemilik: e.target.value})} />
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl border border-gray-200 dark:border-gray-600 font-sans">
+                                            <h3 className="font-bold mb-2">Riwayat Persil / Mutasi</h3>
+                                            <p className="text-sm text-gray-500 mb-4">Catat semua perubahan kepemilikan persil di sini.</p>
+                                            <DynamicTable title="Daftar Mutasi Persil" colorTheme="gray" data={persilList} setData={setPersilList} defaultObj={{nomor_persil: '', kelas: '', luas: '', sebab_tgl_perubahan: ''}} />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {(jenis === SUB_JENIS[4] || jenis === SUB_JENIS[5]) && (
+                                    <div className="space-y-6 animate-fade-in font-sans">
+                                        {(() => {
+                                            const isAjb = jenis === SUB_JENIS[4];
+                                            const data = isAjb ? ajbData : hibahData;
+                                            const setter = isAjb ? setAjbData : setHibahData;
+                                            
+                                            return (
+                                                <React.Fragment>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 font-sans">
+                                                        <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-200 dark:border-blue-900/30">
+                                                            <h3 className="font-bold text-blue-800 dark:text-blue-300 mb-4">{isAjb ? 'Pihak Pertama (Penjual)' : 'Pihak Pertama (Pemberi Hibah)'}</h3>
+                                                            <div className="space-y-3">
+                                                                <Input label="Nama Lengkap" value={isAjb ? data.pihak1_nama : data.pemberi_nama} onChange={e => setter({...data, [isAjb ? 'pihak1_nama' : 'pemberi_nama']: e.target.value})} />
+                                                                <Input label="NIK" value={isAjb ? data.pihak1_nik : data.pemberi_nik} onChange={e => setter({...data, [isAjb ? 'pihak1_nik' : 'pemberi_nik']: e.target.value})} />
+                                                                <Textarea label="Alamat" value={isAjb ? data.pihak1_alamat : data.pemberi_alamat} onChange={e => setter({...data, [isAjb ? 'pihak1_alamat' : 'pemberi_alamat']: e.target.value})} rows={2} />
+                                                            </div>
+                                                        </div>
+                                                        <div className="bg-green-50 dark:bg-green-900/10 p-4 rounded-xl border border-green-200 dark:border-green-900/30 font-sans">
+                                                            <h3 className="font-bold text-green-800 dark:text-green-300 mb-4">{isAjb ? 'Pihak Kedua (Pembeli)' : 'Pihak Kedua (Penerima Hibah)'}</h3>
+                                                            <div className="space-y-3">
+                                                                <Input label="Nama Lengkap" value={isAjb ? data.pihak2_nama : data.penerima_nama} onChange={e => setter({...data, [isAjb ? 'pihak2_nama' : 'penerima_nama']: e.target.value})} />
+                                                                <Input label="NIK" value={isAjb ? data.pihak2_nik : data.penerima_nik} onChange={e => setter({...data, [isAjb ? 'pihak2_nik' : 'penerima_nik']: e.target.value})} />
+                                                                <Textarea label="Alamat" value={isAjb ? data.pihak2_alamat : data.penerima_alamat} onChange={e => setter({...data, [isAjb ? 'pihak2_alamat' : 'penerima_alamat']: e.target.value})} rows={2} />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="bg-yellow-50 dark:bg-yellow-900/10 p-6 rounded-xl border border-yellow-200 dark:border-yellow-900/30 font-sans">
+                                                        <h3 className="font-bold text-yellow-800 dark:text-yellow-300 mb-4">Data Objek Tanah</h3>
+                                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                            <div className="md:col-span-3"><Input label="Letak Tanah (Blok/RT)" value={data.letak_tanah} onChange={e => setter({...data, letak_tanah: e.target.value})} /></div>
+                                                            <Input label="Luas Tanah (m²)" value={data.luas_tanah} onChange={e => setter({...data, luas_tanah: e.target.value})} />
+                                                            <Input label="Nomor Persil" value={data.persil} onChange={e => setter({...data, persil: e.target.value})} />
+                                                            <Input label="Nomor Kohir / Buku C" value={data.kohir} onChange={e => setter({...data, kohir: e.target.value})} />
+                                                            {isAjb && <div className="md:col-span-3"><Input label="Harga Kesepakatan" value={data.harga} onChange={e => setter({...data, harga: e.target.value})} placeholder="Contoh: Rp. 100.000.000,-" /></div>}
+                                                            {!isAjb && <div className="md:col-span-3"><Input label="Hubungan Keluarga" value={data.hubungan} onChange={e => setter({...data, hubungan: e.target.value})} placeholder="Contoh: Anak Kandung, Saudara, dll" /></div>}
+                                                        </div>
+                                                    </div>
+                                                </React.Fragment>
+                                            );
+                                        })()}
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div className="mt-10 pt-6 border-t border-gray-200 dark:border-gray-700 flex justify-between">
+                                {documentToEdit && <button onClick={() => setDocumentToEdit(null)} className="px-5 py-3 border border-red-500 text-red-500 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 font-bold transition">Batal Edit</button>}
+                                <button onClick={() => setShowPreview(true)} className="ml-auto px-8 py-3 text-white font-bold rounded-xl shadow-lg hover:opacity-90 transition transform hover:scale-105 flex items-center" style={{ backgroundColor: 'var(--theme-color)' }}>
+                                    <Icon name="FileText" size={20} className="mr-2" /> Preview & Cetak Dokumen
+                                </button>
+                            </div>
+                        </>
+                    )}
+                </div>
+            );
+        }
+
+        function PendudukPanel({ penduduk, setPenduduk, showToast }) {
+            return (
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 animate-fade-in text-gray-950 dark:text-white font-sans">
+                    <h2 className="text-2xl font-bold mb-6 flex items-center">
+                        <Icon name="Users" size={24} className="mr-3 text-[var(--theme-color)]" /> Data Penduduk Desa
+                    </h2>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left border-collapse">
+                            <thead className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+                                <tr>
+                                    <th className="p-4 rounded-tl-lg">NIK</th>
+                                    <th className="p-4">Nama Lengkap</th>
+                                    <th className="p-4">Jenis Kelamin</th>
+                                    <th className="p-4">Agama</th>
+                                    <th className="p-4 rounded-tr-lg">Alamat</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {penduduk.map(p => (
+                                    <tr key={p.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                                        <td className="p-4 font-mono">{p.nik}</td>
+                                        <td className="p-4 font-bold">{p.nama}</td>
+                                        <td className="p-4">{p.jk}</td>
+                                        <td className="p-4">{p.agama}</td>
+                                        <td className="p-4">{p.alamat}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        }
+
+        function DokumenPanel({ dokumen, setDokumen, setDocumentToEdit, setActiveTab }) {
+            const hapusDokumen = (id) => setDokumen(dokumen.filter(d => d.id !== id));
+            return (
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 animate-fade-in text-gray-950 dark:text-white font-sans">
+                    <h2 className="text-2xl font-bold mb-6 flex items-center">
+                        <Icon name="FolderOpen" size={24} className="mr-3 text-[var(--theme-color)]" /> Arsip Dokumen Terbit
+                    </h2>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left border-collapse">
+                            <thead className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+                                <tr>
+                                    <th className="p-4 rounded-tl-lg">Tanggal</th>
+                                    <th className="p-4">Nomor Surat</th>
+                                    <th className="p-4">Jenis Dokumen</th>
+                                    <th className="p-4">Atas Nama</th>
+                                    <th className="p-4 rounded-tr-lg text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {dokumen.map(d => (
+                                    <tr key={d.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                                        <td className="p-4">{d.tanggal}</td>
+                                        <td className="p-4 font-mono text-xs">{d.nomor}</td>
+                                        <td className="p-4 font-bold text-[var(--theme-color)]">{d.jenis}</td>
+                                        <td className="p-4 uppercase">{d.pemohon}</td>
+                                        <td className="p-4 flex gap-2 justify-center font-sans">
+                                            <button 
+                                                onClick={() => { setDocumentToEdit(d); setActiveTab(d.category === 'pertanahan' ? 'pemerintahan' : 'pelayanan'); }} 
+                                                className="px-3 py-1 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded hover:bg-blue-200 transition"
+                                            >
+                                                Lihat
+                                            </button>
+                                            <button 
+                                                onClick={() => hapusDokumen(d.id)} 
+                                                className="px-3 py-1 bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded hover:bg-red-200 transition"
+                                            >
+                                                Hapus
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {dokumen.length === 0 && (
+                                    <tr>
+                                        <td colSpan="5" className="p-8 text-center text-gray-500">Belum ada dokumen yang diarsipkan.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        }
+
+        function WorkspaceDocsModule({ category, icon, docs, setDocs, files, setFiles, description, showToast }) {
+            const [viewMode, setViewMode] = useState('list'); // 'list', 'create', 'edit', 'preview'
+            const [activeDoc, setActiveDoc] = useState(null);
+            const [docForm, setDocForm] = useState({ title: '', content: '' });
+
+            const handleNewDoc = () => {
+                setDocForm({ title: '', content: '' });
+                setViewMode('create');
+            };
+
+            const handleSaveDoc = () => {
+                if (!docForm.title || !docForm.content) {
+                    showToast("Judul dan isi dokumen tidak boleh kosong!");
+                    return;
+                }
+                const isEditing = activeDoc !== null;
+                if (isEditing) {
+                    setDocs(prev => prev.map(d => d.id === activeDoc.id ? { ...d, title: docForm.title, content: docForm.content } : d));
+                    showToast("Dokumen berhasil diperbarui!");
+                } else {
+                    const newDoc = {
+                        id: Date.now(),
+                        role: category,
+                        title: docForm.title,
+                        content: docForm.content,
+                        date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+                    };
+                    setDocs(prev => [...prev, newDoc]);
+                    showToast("Dokumen baru berhasil dibuat!");
+                }
+                setViewMode('list');
+                setActiveDoc(null);
+            };
+
+            const handleEditDoc = (doc) => {
+                setActiveDoc(doc);
+                setDocForm({ title: doc.title, content: doc.content });
+                setViewMode('edit');
+            };
+
+            const handlePreviewDoc = (doc) => {
+                setActiveDoc(doc);
+                setViewMode('preview');
+            };
+
+            const handleDeleteDoc = (id) => {
+                setDocs(prev => prev.filter(d => d.id !== id));
+                showToast("Dokumen berhasil dihapus!");
+            };
+
+            const exportToWord = (doc) => {
+                const htmlContent = `
+                    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+                    <head>
+                        <title>${doc.title}</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; padding: 20px; line-height: 1.6; }
+                            h1 { text-align: center; font-size: 20pt; font-weight: bold; margin-bottom: 25px; }
+                            p { font-size: 11pt; text-align: justify; margin-bottom: 12px; }
+                            .meta { font-size: 10pt; color: #555; text-align: right; margin-bottom: 30px; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="meta">Ruang Kerja: ${doc.role} | Tanggal: ${doc.date}</div>
+                        <h1>${doc.title}</h1>
+                        <div style="white-space: pre-wrap;">${doc.content.replace(/\n/g, '<br/>')}</div>
+                    </body>
+                    </html>
+                `;
+                const blob = new Blob(['\ufeff' + htmlContent], { type: 'application/msword' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${doc.title.replace(/\s+/g, '_')}.doc`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                showToast("Berhasil mengekspor ke MS Word!");
+            };
+
+            const exportToExcel = (doc) => {
+                const htmlContent = `
+                    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+                    <head>
+                        <meta charset="UTF-8">
+                        <style>
+                            th { background-color: #4F81BD; color: #FFFFFF; font-family: Arial; font-size: 12pt; font-weight: bold; border: 0.5pt solid #000; }
+                            td { font-family: Arial; font-size: 10pt; border: 0.5pt solid #000; vertical-align: top; }
+                        </style>
+                    </head>
+                    <body>
+                        <table>
+                            <tr><th colspan="3" style="font-size: 14pt; height: 40px; background-color: #2F4F4F;">ARSIP DOKUMEN DESA - ${doc.role}</th></tr>
+                            <tr><td><strong>Judul Dokumen</strong></td><td colspan="2">${doc.title}</td></tr>
+                            <tr><td><strong>Tanggal Dibuat</strong></td><td colspan="2">${doc.date}</td></tr>
+                            <tr><td><strong>Perangkat</strong></td><td colspan="2">${doc.role}</td></tr>
+                            <tr><td colspan="3" style="background-color: #F2F2F2; font-weight: bold; text-align: center;">ISI DOKUMEN / NOTA DINAS</td></tr>
+                            ${doc.content.split('\n').map((line, idx) => `
+                                <tr>
+                                    <td style="text-align: center;">Baris ${idx+1}</td>
+                                    <td colspan="2">${line}</td>
+                                </tr>
+                            `).join('')}
+                        </table>
+                    </body>
+                    </html>
+                `;
+                const blob = new Blob(['\ufeff' + htmlContent], { type: 'application/vnd.ms-excel' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${doc.title.replace(/\s+/g, '_')}.xls`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                showToast("Berhasil mengekspor ke MS Excel!");
+            };
+
+            const printDocument = () => {
+                window.print();
+            };
+
+            const roleDocs = docs.filter(d => d.role === category);
+
+            return (
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 animate-fade-in text-gray-950 dark:text-white font-sans">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b pb-4 mb-6 dark:border-gray-700 gap-4">
+                        <div>
+                            <h2 className="text-2xl font-bold flex items-center">
+                                <Icon name={icon} size={24} className="mr-3 text-[var(--theme-color)]" /> Ruang Kerja Perangkat : {category}
+                            </h2>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{description}</p>
+                        </div>
+                        {viewMode === 'list' && (
+                            <button onClick={handleNewDoc} className="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow transition flex items-center">
+                                <Icon name="Plus" size={16} className="mr-2" /> Buat Dokumen Baru
+                            </button>
+                        )}
+                    </div>
+
+                    {/* LIST VIEW */}
+                    {viewMode === 'list' && (
+                        <div className="space-y-6">
+                            <div>
+                                <h3 className="text-lg font-bold mb-4 flex items-center text-gray-800 dark:text-white">
+                                    <Icon name="FileText" size={18} className="mr-2 text-indigo-500" /> Dokumen Kerja ({roleDocs.length})
+                                </h3>
+                                {roleDocs.length === 0 ? (
+                                    <div className="p-8 text-center text-gray-400 bg-gray-50 dark:bg-gray-700/20 rounded-xl border border-dashed">
+                                        Belum ada dokumen kerja. Silakan klik "Buat Dokumen Baru" di atas.
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {roleDocs.map(doc => (
+                                            <div key={doc.id} className="p-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 flex flex-col justify-between hover:shadow-md transition">
+                                                <div>
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <span className="text-xs text-gray-400 font-mono font-bold flex items-center">
+                                                            <Icon name="Calendar" size={12} className="mr-1" /> {doc.date}
+                                                        </span>
+                                                        <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded font-bold">{doc.role}</span>
+                                                    </div>
+                                                    <h4 className="font-bold text-lg mb-2 text-gray-900 dark:text-white line-clamp-1">{doc.title}</h4>
+                                                    <p className="text-sm text-gray-500 line-clamp-3 mb-4 whitespace-pre-line">{doc.content}</p>
+                                                </div>
+                                                <div className="flex flex-wrap gap-2 pt-4 border-t dark:border-gray-700 font-sans">
+                                                    <button onClick={() => handlePreviewDoc(doc)} className="px-3 py-1.5 bg-blue-500 text-white text-xs font-bold rounded hover:opacity-90 flex items-center">
+                                                        <Icon name="Eye" size={12} className="mr-1" /> Preview
+                                                    </button>
+                                                    <button onClick={() => handleEditDoc(doc)} className="px-3 py-1.5 bg-yellow-500 text-white text-xs font-bold rounded hover:opacity-90 flex items-center">
+                                                        <Icon name="Edit" size={12} className="mr-1" /> Edit
+                                                    </button>
+                                                    <button onClick={() => exportToWord(doc)} className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded hover:opacity-90 flex items-center">
+                                                        <Icon name="FileWord" size={12} className="mr-1" /> Word
+                                                    </button>
+                                                    <button onClick={() => exportToExcel(doc)} className="px-3 py-1.5 bg-green-600 text-white text-xs font-bold rounded hover:opacity-90 flex items-center">
+                                                        <Icon name="FileExcel" size={12} className="mr-1" /> Excel
+                                                    </button>
+                                                    <button onClick={() => handleDeleteDoc(doc.id)} className="px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded hover:opacity-90 ml-auto flex items-center" title="Hapus Dokumen">
+                                                        <Icon name="Trash2" size={12} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                                <h3 className="text-lg font-bold mb-4 flex items-center text-gray-800 dark:text-white">
+                                    <Icon name="Upload" size={18} className="mr-2 text-emerald-500" /> Arsip Digital File Fisik (Scan)
+                                </h3>
+                                <UploadSection category={category} files={files} setFiles={setFiles} showToast={showToast} />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* CREATE & EDIT VIEW */}
+                    {(viewMode === 'create' || viewMode === 'edit') && (
+                        <div className="space-y-4 animate-fade-in max-w-4xl mx-auto bg-gray-50 dark:bg-gray-700/20 p-6 rounded-xl border border-gray-200 dark:border-gray-700 font-sans">
+                            <h3 className="text-xl font-bold border-b pb-2 mb-4">
+                                {viewMode === 'create' ? 'Buat Dokumen Baru' : 'Edit Dokumen'}
+                            </h3>
+                            <Input 
+                                label="Judul Dokumen" 
+                                value={docForm.title} 
+                                onChange={e => setDocForm({...docForm, title: e.target.value})} 
+                                placeholder="Ketikkan judul resmi dokumen..." 
+                            />
+                            <Textarea 
+                                label="Isi Dokumen" 
+                                value={docForm.content} 
+                                onChange={e => setDocForm({...docForm, content: e.target.value})} 
+                                placeholder="Tuliskan seluruh isi draf dokumen atau surat di sini secara lengkap..." 
+                                rows={12} 
+                            />
+                            <div className="flex justify-end gap-3 pt-4">
+                                <button onClick={() => { setViewMode('list'); setActiveDoc(null); }} className="px-5 py-2 bg-gray-400 hover:bg-gray-500 text-white font-bold rounded-xl transition">
+                                    Batal
+                                </button>
+                                <button onClick={handleSaveDoc} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow transition flex items-center">
+                                    <Icon name="Save" size={16} className="mr-2" /> Simpan Dokumen
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* PREVIEW VIEW */}
+                    {viewMode === 'preview' && activeDoc && (
+                        <div className="space-y-4 animate-fade-in max-w-4xl mx-auto font-sans">
+                            <div className="flex flex-wrap gap-3 justify-between items-center bg-gray-100 dark:bg-gray-700 p-4 rounded-xl border print-hide">
+                                <button onClick={() => setViewMode('list')} className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white text-sm font-bold rounded-lg flex items-center transition">
+                                    <Icon name="X" size={16} className="mr-2" /> Tutup Preview
+                                </button>
+                                <div className="flex gap-2 font-sans">
+                                    <button onClick={() => exportToWord(activeDoc)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg flex items-center transition">
+                                        <Icon name="FileWord" size={16} className="mr-2" /> Export Word
+                                    </button>
+                                    <button onClick={() => exportToExcel(activeDoc)} className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-lg flex items-center transition">
+                                        <Icon name="FileExcel" size={16} className="mr-2" /> Export Excel
+                                    </button>
+                                    <button onClick={printDocument} className="px-4 py-2 text-white text-sm font-bold rounded-lg flex items-center transition transform hover:scale-105" style={{ backgroundColor: 'var(--theme-color)' }}>
+                                        <Icon name="Printer" size={16} className="mr-2" /> Cetak / PDF
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* DOCUMENT SHEET FOR PREVIEW AND PRINT (STRICT ARIAL) */}
+                            <div id="printable-area" className="bg-white text-black p-12 shadow-2xl border min-h-[297mm] rounded-lg" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
+                                <KopSurat />
+                                <div className="mt-8 text-right text-xs font-bold text-gray-500">
+                                    Format Dokumen: {activeDoc.role} | Tanggal Terbit: {activeDoc.date}
+                                </div>
+                                <div className="text-center my-8">
+                                    <h2 className="text-2xl font-black uppercase underline tracking-wider">{activeDoc.title}</h2>
+                                    <p className="text-xs text-gray-600 mt-1">Sistem Dokumen Terintegrasi DigiDes Keboledan</p>
+                                </div>
+                                <div className="text-justify leading-relaxed whitespace-pre-wrap text-base my-8 px-6">
+                                    {activeDoc.content}
+                                </div>
+                                <TandaTangan today={activeDoc.date} pejabat={activeDoc.role === 'KADES' ? 'KADES' : 'SEKDES'} />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function UploadSection({ category, files, setFiles, showToast }) {
+            const handleUpload = (e) => {
+                if (e.target.files.length === 0) return;
+                const newFiles = Array.from(e.target.files).map(f => ({ 
+                    name: f.name, 
+                    date: new Date().toLocaleDateString('id-ID'), 
+                    category: category, 
+                    size: (f.size / 1024).toFixed(2) + ' KB' 
+                }));
+                setFiles([...files, ...newFiles]);
+                showToast(`Berhasil mengunggah ${newFiles.length} file.`);
+            };
+            
+            const catFiles = files.filter(f => f.category === category);
+            
+            return (
+                <div className="font-sans">
+                    <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-10 text-center hover:bg-gray-50 dark:hover:bg-gray-700/50 transition relative group">
+                        <input type="file" multiple onChange={handleUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" title="Upload files" />
+                        <Icon name="Upload" size={48} className="text-gray-400 mb-4 mx-auto group-hover:text-[var(--theme-color)] transition-colors" />
+                        <p className="font-bold text-gray-700 dark:text-gray-300 mb-1">Klik atau seret file ke sini untuk mengunggah arsip fisik</p>
+                        <p className="text-sm text-gray-500">Mendukung format PDF, Word, Excel, JPG, PNG.</p>
+                    </div>
+                    
+                    {catFiles.length > 0 && (
+                        <div className="mt-8">
+                            <h4 className="font-bold mb-4 text-lg border-b dark:border-gray-700 pb-2">File Terunggah ({catFiles.length})</h4>
+                            <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {catFiles.map((f, i) => (
+                                    <li key={i} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600">
+                                        <div className="flex items-center overflow-hidden">
+                                            <Icon name="FileIcon" size={24} className="text-[var(--theme-color)] mr-3 flex-shrink-0" />
+                                            <div className="overflow-hidden">
+                                                <p className="font-semibold truncate text-sm">{f.name}</p>
+                                                <p className="text-xs text-gray-500">{f.date} • {f.size}</p>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={() => { setFiles(files.filter(file => file !== f)); showToast("File dihapus."); }}
+                                            className="text-gray-400 hover:text-red-500 p-2"
+                                        >
+                                            <Icon name="Trash2" />
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const rootElement = document.getElementById('root');
+        const root = ReactDOM.createRoot(rootElement);
+        root.render(<App />);
+    </script>
+</body>
+</html>
